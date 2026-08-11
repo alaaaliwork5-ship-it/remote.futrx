@@ -50,11 +50,18 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | POST | `/api/claude/login/cancel` | Cancel Claude login; admin only |
 | POST | `/api/codex/login/device` | Start Codex device login; admin only |
 | POST | `/api/kimi/login/device` | Start Kimi device login; admin only |
+| POST | `/api/minimax/login/key` | Store the MiniMax API key; admin only |
+| POST | `/api/minimax/login/clear` | Remove the stored MiniMax API key; admin only |
 | GET | `/api/skills?provider=...&projectId=...` | List accessible provider and project skills |
 
 `{provider}` can also be `antigravity` for the generic status binding, but
 Antigravity has no host login route. Its status is unavailable by design
 because users authenticate `agy` inside each project.
+
+MiniMax is the one provider on the API-key flow: it has no interactive grant,
+so instead of a login route it takes a bearer token that is stored on the host
+and injected into runs as an environment variable. Its `auth-status` never
+returns the key itself — only whether one is configured and a masked hint.
 
 ## Project routes
 

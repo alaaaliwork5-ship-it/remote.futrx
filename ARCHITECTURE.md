@@ -5,7 +5,7 @@ This document describes how remote.futrx is put together: its runtime topology, 
 ## What it is
 
 remote.futrx is a **single-server, self-hosted** workspace for the Claude
-Code, Codex, Kimi Code, and Antigravity agent CLIs. A user creates a project,
+Code, Codex, Kimi Code, Antigravity, and MiniMax agent CLIs. A user creates a project,
 the platform gives that project an isolated Linux container, and the user
 drives interactive or scheduled agent turns against the project's files from
 the browser—with chat, terminal, code editor, file manager, Git history, task
@@ -136,10 +136,14 @@ enforces **one run per chat**, persists every event through the chat repository,
 and replays history to reconnecting subscribers by sequence number. Provider
 adapters ([`agent/claude`](backend/internal/agent/claude),
 [`agent/codex`](backend/internal/agent/codex),
-[`agent/kimi`](backend/internal/agent/kimi), and
-[`agent/antigravity`](backend/internal/agent/antigravity)) normalize each
+[`agent/kimi`](backend/internal/agent/kimi),
+[`agent/antigravity`](backend/internal/agent/antigravity), and
+[`agent/minimax`](backend/internal/agent/minimax)) normalize each
 CLI's available output into a shared event stream. Antigravity print mode
 provides plain streamed text rather than structured tool/usage events.
+MiniMax has no CLI of its own: it drives the Codex binary against MiniMax's
+Responses endpoint under a separate `CODEX_HOME` (`/root/.minimax-codex`), so
+its config, sessions, and credentials stay isolated from the Codex agent's.
 
 A chat with **no project** ("loose chat") runs the CLI directly on the host instead of in a container. This path is convenient but removes the container boundary; its consequences are the subject of several threat-model entries.
 

@@ -57,6 +57,11 @@ export const API_ROUTES = {
     status: "/api/kimi/auth-status",
     startDeviceLogin: "/api/kimi/login/device",
   },
+  minimaxAuth: {
+    status: "/api/minimax/auth-status",
+    submitKey: "/api/minimax/login/key",
+    clearKey: "/api/minimax/login/clear",
+  },
   projects: {
     collection: "/api/projects",
     item: (id: string) => `/api/projects/${encodeURIComponent(id)}`,
@@ -106,6 +111,7 @@ export const WEB_SOCKET_ROUTES = {
   claudeAuthStatus: applicationPath("/ws/claude/auth-status"),
   codexAuthStatus: applicationPath("/ws/codex/auth-status"),
   kimiAuthStatus: applicationPath("/ws/kimi/auth-status"),
+  minimaxAuthStatus: applicationPath("/ws/minimax/auth-status"),
   chat: (chatId: string, sinceSeq: number): ApplicationPath => {
     const route = applicationPath(`/ws/chat/${encodeURIComponent(chatId)}`);
     return sinceSeq > 0

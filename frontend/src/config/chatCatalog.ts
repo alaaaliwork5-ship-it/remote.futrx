@@ -12,6 +12,7 @@ export const CHAT_PROVIDER_OPTIONS = [
   { value: "claude", label: "Claude", validInUserSettings: true },
   { value: "kimi", label: "Kimi", validInUserSettings: false },
   { value: "antigravity", label: "Antigravity", validInUserSettings: false },
+  { value: "minimax", label: "MiniMax", validInUserSettings: false },
 ] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_OPTIONS)[number]["value"];
@@ -30,13 +31,15 @@ export type ChatMode = (typeof CHAT_MODE_OPTIONS)[number]["value"];
 // Reasoning-effort ladders differ per CLI (verified against each provider's
 // --help / config validation). "Auto" ("") omits the flag so the CLI/server
 // picks its own default.
+// MiniMax M3 exposes only Adaptive Thinking off/on, so it offers None and High
+// rather than the full Codex ladder.
 export const REASONING_EFFORT_OPTIONS = [
-  { value: "", label: "Auto", providers: ["claude", "codex", "antigravity"] },
-  { value: "none", label: "None", providers: ["codex"] },
+  { value: "", label: "Auto", providers: ["claude", "codex", "antigravity", "minimax"] },
+  { value: "none", label: "None", providers: ["codex", "minimax"] },
   { value: "minimal", label: "Minimal", providers: ["codex"] },
   { value: "low", label: "Low", providers: ["claude", "codex", "antigravity"] },
   { value: "medium", label: "Medium", providers: ["claude", "codex", "antigravity"] },
-  { value: "high", label: "High", providers: ["claude", "codex", "antigravity"] },
+  { value: "high", label: "High", providers: ["claude", "codex", "antigravity", "minimax"] },
   { value: "xhigh", label: "XHigh", providers: ["claude", "codex"] },
   { value: "max", label: "Max", providers: ["claude", "codex"] },
   { value: "ultra", label: "Ultra", providers: ["claude", "codex"] },
@@ -72,6 +75,10 @@ const MODEL_OPTIONS_BY_PROVIDER = {
     { value: "gpt-5.3-codex", label: "GPT-5.3 Codex", sub: "coding optimized" },
   ],
   kimi: [{ value: "", label: "Auto", sub: "kimi default" }],
+  minimax: [
+    { value: "", label: "Auto", sub: "MiniMax-M3" },
+    { value: "MiniMax-M3", label: "MiniMax M3", sub: "1M context" },
+  ],
   // agy picks its own Gemini engine; the CLI accepts --model but publishes no
   // stable headless id list, so Auto is the only safe catalog entry.
   antigravity: [{ value: "", label: "Auto", sub: "antigravity default" }],
@@ -81,6 +88,7 @@ export function modelOptionsForProvider(provider?: ChatProvider): readonly Model
   if (provider === "codex") return MODEL_OPTIONS_BY_PROVIDER.codex;
   if (provider === "kimi") return MODEL_OPTIONS_BY_PROVIDER.kimi;
   if (provider === "antigravity") return MODEL_OPTIONS_BY_PROVIDER.antigravity;
+  if (provider === "minimax") return MODEL_OPTIONS_BY_PROVIDER.minimax;
   return MODEL_OPTIONS_BY_PROVIDER.claude;
 }
 
@@ -110,6 +118,10 @@ export function modelDisplayLabel(model?: string, provider?: ChatProvider): stri
   if (!model) return "Auto";
   if (provider === "codex") {
     const match = MODEL_OPTIONS_BY_PROVIDER.codex.find((option) => option.value === model);
+    return match?.label ?? model;
+  }
+  if (provider === "minimax") {
+    const match = MODEL_OPTIONS_BY_PROVIDER.minimax.find((option) => option.value === model);
     return match?.label ?? model;
   }
   return matchingClaudeModel(model)?.label ?? model;

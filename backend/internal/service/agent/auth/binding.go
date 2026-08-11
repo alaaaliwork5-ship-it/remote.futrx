@@ -13,6 +13,9 @@ type Flow string
 const (
 	FlowCode   Flow = "code"
 	FlowDevice Flow = "device"
+	// FlowAPIKey covers providers authenticated by a static key the user pastes
+	// once, rather than by an interactive grant the CLI negotiates.
+	FlowAPIKey Flow = "apikey"
 )
 
 var ErrUnsupportedFlow = errors.New("operation is not supported by this agent auth flow")
@@ -32,6 +35,8 @@ type Binding struct {
 	cancelCode       func(context.Context) error
 	isCodeInputError func(error) bool
 	startDevice      func(context.Context) (DeviceState, error)
+	submitKey        func(context.Context, string) error
+	clearKey         func(context.Context) error
 }
 
 func NewCodeBinding(id agent.ProviderID, service *CodeService) Binding {
@@ -58,6 +63,23 @@ func NewDeviceBinding[S any](id agent.ProviderID, service *DeviceService[S]) Bin
 	binding.subscribe = statusSubscription(service.Subscribe)
 	binding.authenticated = service.Authenticated
 	binding.startDevice = service.StartDeviceLogin
+	return binding
+}
+
+// NewAPIKeyBinding exposes a provider whose credential is a static key. There is
+// no interactive grant to drive, so the binding carries submit/clear instead of
+// the code and device lifecycles.
+func NewAPIKeyBinding[S any](id agent.ProviderID, service *APIKeyService[S]) Binding {
+	binding := Binding{id: id, flow: FlowAPIKey}
+	if service == nil {
+		return binding
+	}
+	binding.status = func() any { return service.Status() }
+	binding.subscribe = statusSubscription(service.Subscribe)
+	binding.authenticated = service.Authenticated
+	binding.submitKey = service.SubmitKey
+	binding.clearKey = service.ClearKey
+	binding.isCodeInputError = service.IsInputError
 	return binding
 }
 
@@ -109,8 +131,27 @@ func (b Binding) CancelCode(ctx context.Context) error {
 	return b.cancelCode(ctx)
 }
 
+// IsCodeInputError reports whether an error came from malformed caller input
+// rather than a server fault, so transports can answer 4xx. It spans the code
+// and API-key flows; both accept a user-typed secret.
 func (b Binding) IsCodeInputError(err error) bool {
 	return b.isCodeInputError != nil && b.isCodeInputError(err)
+}
+
+// SubmitKey stores a static API key for providers on the FlowAPIKey flow.
+func (b Binding) SubmitKey(ctx context.Context, key string) error {
+	if b.submitKey == nil {
+		return ErrUnsupportedFlow
+	}
+	return b.submitKey(ctx, key)
+}
+
+// ClearKey removes a stored static API key.
+func (b Binding) ClearKey(ctx context.Context) error {
+	if b.clearKey == nil {
+		return ErrUnsupportedFlow
+	}
+	return b.clearKey(ctx)
 }
 
 func (b Binding) StartDevice(ctx context.Context) (DeviceState, error) {

@@ -5,12 +5,14 @@ import { useAuth, type AuthState } from "../hooks/auth/useAuth";
 import { useClaudeAuth, type ClaudeAuthState } from "../hooks/auth/useClaudeAuth";
 import { useCodexAuth, type CodexAuthState } from "../hooks/auth/useCodexAuth";
 import { useKimiAuth, type KimiAuthState } from "../hooks/auth/useKimiAuth";
+import { useMinimaxAuth, type MiniMaxAuthState } from "../hooks/auth/useMinimaxAuth";
 
 interface AuthContextValue {
   auth: AuthState;
   claudeAuth: ClaudeAuthState;
   codexAuth: CodexAuthState;
   kimiAuth: KimiAuthState;
+  minimaxAuth: MiniMaxAuthState;
   appAuthOk: boolean;
   providerAuthChecked: boolean;
   providerAuthenticated: boolean;
@@ -27,9 +29,14 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   const claudeAuth = useClaudeAuth(providerAuthEnabled);
   const codexAuth = useCodexAuth(providerAuthEnabled);
   const kimiAuth = useKimiAuth(providerAuthEnabled);
-  const providerAuthChecked = claudeAuth.checked && codexAuth.checked && kimiAuth.checked;
+  const minimaxAuth = useMinimaxAuth(providerAuthEnabled);
+  const providerAuthChecked =
+    claudeAuth.checked && codexAuth.checked && kimiAuth.checked && minimaxAuth.checked;
   const providerAuthenticated =
-    claudeAuth.authenticated || codexAuth.authenticated || kimiAuth.authenticated;
+    claudeAuth.authenticated ||
+    codexAuth.authenticated ||
+    kimiAuth.authenticated ||
+    minimaxAuth.authenticated;
   const gateOpen = providerAuthEnabled && providerAuthChecked && providerAuthenticated;
 
   return (
@@ -39,6 +46,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
         claudeAuth,
         codexAuth,
         kimiAuth,
+        minimaxAuth,
         appAuthOk,
         providerAuthChecked,
         providerAuthenticated,

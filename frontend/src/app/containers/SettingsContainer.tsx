@@ -16,7 +16,7 @@ export function SettingsContainer({
   onBack: () => void;
   onHamburger: () => void;
 }) {
-  const { auth, codexAuth, kimiAuth } = useAuthContext();
+  const { auth, codexAuth, kimiAuth, minimaxAuth } = useAuthContext();
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
@@ -64,6 +64,13 @@ export function SettingsContainer({
       kimiStarting={kimiAuth.starting}
       kimiError={kimiAuth.error}
       onStartKimiDeviceLogin={kimiAuth.startDeviceLogin}
+      minimaxAuthenticated={minimaxAuth.authenticated}
+      minimaxApiKey={minimaxAuth.apiKey}
+      minimaxLoading={minimaxAuth.loading}
+      minimaxSaving={minimaxAuth.saving}
+      minimaxError={minimaxAuth.error}
+      onSubmitMinimaxKey={minimaxAuth.submitKey}
+      onClearMinimaxKey={minimaxAuth.clearKey}
     />
   );
 }

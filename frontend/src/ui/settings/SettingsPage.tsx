@@ -1,5 +1,5 @@
 import type { AppearanceTheme } from "../../models/settings";
-import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
+import type { CodexDeviceLogin, KimiDeviceLogin, MiniMaxApiKeyState } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
@@ -9,6 +9,7 @@ import { AppearanceSettings } from "./AppearanceSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
+import { MinimaxAuthSettings } from "./MinimaxAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
@@ -85,6 +86,11 @@ export function SettingsPage({
   kimiLoading,
   kimiStarting,
   kimiError,
+  minimaxAuthenticated,
+  minimaxApiKey,
+  minimaxLoading,
+  minimaxSaving,
+  minimaxError,
   onBack,
   onHamburger,
   onTabChange,
@@ -94,6 +100,8 @@ export function SettingsPage({
   onAppearanceThemeChange,
   onStartCodexDeviceLogin,
   onStartKimiDeviceLogin,
+  onSubmitMinimaxKey,
+  onClearMinimaxKey,
 }: {
   activeTab: SettingsTab;
   currentEmail: string;
@@ -125,6 +133,11 @@ export function SettingsPage({
   kimiLoading: boolean;
   kimiStarting: boolean;
   kimiError: string | null;
+  minimaxAuthenticated: boolean;
+  minimaxApiKey?: MiniMaxApiKeyState;
+  minimaxLoading: boolean;
+  minimaxSaving: boolean;
+  minimaxError: string | null;
   onBack: () => void;
   onHamburger: () => void;
   onTabChange: (tab: SettingsTab) => void;
@@ -134,6 +147,8 @@ export function SettingsPage({
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
   onStartCodexDeviceLogin: () => Promise<void>;
   onStartKimiDeviceLogin: () => Promise<void>;
+  onSubmitMinimaxKey: (key: string) => Promise<void>;
+  onClearMinimaxKey: () => Promise<void>;
 }) {
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
@@ -225,6 +240,15 @@ export function SettingsPage({
                       starting={kimiStarting}
                       error={kimiError}
                       onStartDeviceLogin={onStartKimiDeviceLogin}
+                    />
+                    <MinimaxAuthSettings
+                      authenticated={minimaxAuthenticated}
+                      apiKey={minimaxApiKey}
+                      loading={minimaxLoading}
+                      saving={minimaxSaving}
+                      error={minimaxError}
+                      onSubmitKey={onSubmitMinimaxKey}
+                      onClearKey={onClearMinimaxKey}
                     />
                   </div>
                 </div>

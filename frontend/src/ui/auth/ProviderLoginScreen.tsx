@@ -2,10 +2,11 @@ import { useAuthContext } from "../../state/context/AuthContext";
 import { ClaudeAuthSettings } from "../settings/ClaudeAuthSettings";
 import { CodexAuthSettings } from "../settings/CodexAuthSettings";
 import { KimiAuthSettings } from "../settings/KimiAuthSettings";
+import { MinimaxAuthSettings } from "../settings/MinimaxAuthSettings";
 import { Key } from "../primitives/icons";
 
 export function ProviderLoginScreen() {
-  const { codexAuth, kimiAuth } = useAuthContext();
+  const { codexAuth, kimiAuth, minimaxAuth } = useAuthContext();
 
   return (
     <div class="app-shell overflow-y-auto bg-[#090b0f] text-ink-100 p-5">
@@ -40,6 +41,15 @@ export function ProviderLoginScreen() {
             starting={kimiAuth.starting}
             error={kimiAuth.error}
             onStartDeviceLogin={kimiAuth.startDeviceLogin}
+          />
+          <MinimaxAuthSettings
+            authenticated={minimaxAuth.authenticated}
+            apiKey={minimaxAuth.apiKey}
+            loading={minimaxAuth.loading}
+            saving={minimaxAuth.saving}
+            error={minimaxAuth.error}
+            onSubmitKey={minimaxAuth.submitKey}
+            onClearKey={minimaxAuth.clearKey}
           />
         </div>
       </div>

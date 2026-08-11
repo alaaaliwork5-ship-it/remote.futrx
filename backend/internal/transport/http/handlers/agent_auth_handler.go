@@ -48,6 +48,13 @@ func (h *AgentAuthHandler) RegisterRoutes(mux *http.ServeMux) {
 			mux.HandleFunc(prefix+"/login/device", func(w http.ResponseWriter, r *http.Request) {
 				h.handleDeviceStart(binding, w, r)
 			})
+		case agentauth.FlowAPIKey:
+			mux.HandleFunc(prefix+"/login/key", func(w http.ResponseWriter, r *http.Request) {
+				h.handleKeySubmit(binding, w, r)
+			})
+			mux.HandleFunc(prefix+"/login/clear", func(w http.ResponseWriter, r *http.Request) {
+				h.handleKeyClear(binding, w, r)
+			})
 		}
 	}
 }
@@ -119,6 +126,41 @@ func (h *AgentAuthHandler) handleDeviceStart(binding agentauth.Binding, w http.R
 		return
 	}
 	httptransport.SendJSON(w, http.StatusOK, state)
+}
+
+// handleKeySubmit stores a static API key. The key is only ever written; no
+// endpoint reads it back, and the status response carries a masked hint only.
+func (h *AgentAuthHandler) handleKeySubmit(binding agentauth.Binding, w http.ResponseWriter, r *http.Request) {
+	if !h.requireMutationAccess(w, r) {
+		return
+	}
+	var body struct {
+		Key string `json:"key"`
+	}
+	if err := readJSONBody(r, &body); err != nil {
+		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := binding.SubmitKey(r.Context(), body.Key); err != nil {
+		status := http.StatusInternalServerError
+		if binding.IsCodeInputError(err) {
+			status = http.StatusBadRequest
+		}
+		httptransport.SendErr(w, status, err.Error())
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *AgentAuthHandler) handleKeyClear(binding agentauth.Binding, w http.ResponseWriter, r *http.Request) {
+	if !h.requireMutationAccess(w, r) {
+		return
+	}
+	if err := binding.ClearKey(r.Context()); err != nil {
+		httptransport.SendErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *AgentAuthHandler) requireMutationAccess(w http.ResponseWriter, r *http.Request) bool {

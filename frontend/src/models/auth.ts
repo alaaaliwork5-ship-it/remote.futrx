@@ -71,6 +71,21 @@ export interface KimiDeviceLogin {
   error?: string;
 }
 
+// MiniMax authenticates with a static bearer token from its developer platform
+// rather than an interactive grant, so there is no handshake state to stream —
+// only whether a key is stored, and a masked hint identifying which one.
+export interface MiniMaxAuthStatus {
+  authenticated: boolean;
+  apiKey?: MiniMaxApiKeyState;
+}
+
+export interface MiniMaxApiKeyState {
+  configured: boolean;
+  hint?: string;
+  updatedAt?: number;
+  error?: string;
+}
+
 export type ClaudeLoginPhase =
   | "idle"
   | "starting"

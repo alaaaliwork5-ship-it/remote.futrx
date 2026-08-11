@@ -88,27 +88,42 @@ func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
 	// antigravity's CLI owns its auth (OS keyring / per-home token fallback
 	// with no stable token path), so it is the one profile allowed to ship
 	// without a credential sync policy — sign-in happens in the chat terminal.
-	credentialExempt := map[string]bool{"antigravity": true}
+	// minimax stores its API key on the host and injects it as an environment
+	// variable at run time, so nothing is ever seeded into a container.
+	credentialExempt := map[string]bool{"antigravity": true, "minimax": true}
+
+	// minimax runs the Codex binary the codex profile already installs, so it
+	// deliberately declares no CLI of its own; declaring one would add a
+	// duplicate npm package and image label to every base image.
+	cliExempt := map[string]bool{"minimax": true}
 
 	profiles := AgentProfiles()
 	ids := make([]string, 0, len(profiles))
 	for _, profile := range profiles {
 		ids = append(ids, profile.ID)
-		if profile.CLI.Binary == "" {
-			t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
-		}
-		if profile.CLI.InstallMode == provisioning.InstallWithScript {
-			if profile.CLI.InstallScript == "" {
-				t.Fatalf("profile %q uses script install without a script", profile.ID)
+		if cliExempt[profile.ID] {
+			// An exempt profile must declare no CLI at all. A partial spec
+			// would silently reach the image recipe and install nothing.
+			if profile.CLI.Binary != "" || profile.CLI.PackageName != "" {
+				t.Fatalf("profile %q is CLI-exempt but declares a CLI: %#v", profile.ID, profile.CLI)
 			}
-		} else if profile.CLI.PackageName == "" {
-			t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
+		} else {
+			if profile.CLI.Binary == "" {
+				t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
+			}
+			if profile.CLI.InstallMode == provisioning.InstallWithScript {
+				if profile.CLI.InstallScript == "" {
+					t.Fatalf("profile %q uses script install without a script", profile.ID)
+				}
+			} else if profile.CLI.PackageName == "" {
+				t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
+			}
 		}
 		if profile.Credentials.Empty() && !credentialExempt[profile.ID] {
 			t.Fatalf("profile %q has no credential policy", profile.ID)
 		}
 	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
+	if want := []string{"claude", "codex", "kimi", "antigravity", "minimax"}; !slices.Equal(ids, want) {
 		t.Fatalf("profile IDs = %v, want %v", ids, want)
 	}
 }
@@ -136,7 +151,7 @@ func TestAgentAuthBindingsComeFromRegistrationCatalog(t *testing.T) {
 		}
 		ids = append(ids, string(binding.ID()))
 	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
+	if want := []string{"claude", "codex", "kimi", "antigravity", "minimax"}; !slices.Equal(ids, want) {
 		t.Fatalf("auth binding IDs = %v, want %v", ids, want)
 	}
 }

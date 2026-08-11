@@ -6,6 +6,7 @@ import (
 	claudeagent "github.com/futrx-com/remote.futrx.com/internal/agent/claude"
 	codexagent "github.com/futrx-com/remote.futrx.com/internal/agent/codex"
 	kimiagent "github.com/futrx-com/remote.futrx.com/internal/agent/kimi"
+	minimaxagent "github.com/futrx-com/remote.futrx.com/internal/agent/minimax"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -60,6 +61,18 @@ func agentDefinitions() []agentDefinition {
 			// one-time `agy` run in the chat terminal per workspace.
 			authBinding: func() agentauth.Binding {
 				return agentauth.NewCodeBinding(agent.ProviderAntigravity, nil)
+			},
+		},
+		{
+			profile: minimaxagent.Profile,
+			provider: func(projects *serviceproject.Service, containerDeps provisioning.ContainerDependencies) agent.Provider {
+				return minimaxagent.New(projects, containerDeps)
+			},
+			// MiniMax issues a static bearer token from its developer platform
+			// rather than negotiating an interactive grant, so it registers on
+			// the API-key flow instead of code or device.
+			authBinding: func() agentauth.Binding {
+				return agentauth.NewAPIKeyBinding(agent.ProviderMiniMax, minimaxagent.NewAuth())
 			},
 		},
 	}

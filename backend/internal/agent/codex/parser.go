@@ -225,7 +225,7 @@ func (p *Parser) event(
 	ev := agent.Event{
 		T:              now,
 		Type:           type_,
-		Provider:       agent.ProviderCodex,
+		Provider:       p.req.Provider,
 		ConversationID: p.req.ConversationID,
 		Raw:            raw,
 	}

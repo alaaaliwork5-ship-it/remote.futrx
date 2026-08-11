@@ -331,6 +331,8 @@ func clearSessionIDForProvider(meta *ChatMeta, provider agent.ProviderID) {
 		meta.KimiSessionID = ""
 	case agent.ProviderAntigravity:
 		meta.AntigravitySessionID = ""
+	case agent.ProviderMiniMax:
+		meta.MiniMaxSessionID = ""
 	default:
 		meta.ClaudeSessionID = ""
 	}
@@ -366,6 +368,8 @@ func providerIDFromChatProvider(provider servicechat.Provider) agent.ProviderID 
 		return agent.ProviderKimi
 	case servicechat.ProviderAntigravity:
 		return agent.ProviderAntigravity
+	case servicechat.ProviderMiniMax:
+		return agent.ProviderMiniMax
 	default:
 		return agent.ProviderClaude
 	}
@@ -379,6 +383,8 @@ func sessionIDForProvider(meta ChatMeta, provider agent.ProviderID) string {
 		return meta.KimiSessionID
 	case agent.ProviderAntigravity:
 		return meta.AntigravitySessionID
+	case agent.ProviderMiniMax:
+		return meta.MiniMaxSessionID
 	default:
 		return meta.ClaudeSessionID
 	}
