@@ -36,6 +36,23 @@ Think of every project as its own server-side computer:
 
 Remote is not another AI model. It gives the models you already use a complete place to work.
 
+## New in this fork
+
+This fork builds on upstream Remote with provider, safety, and deployment improvements:
+
+**Dynamic agent catalog** — `GET /api/agents` serves the full provider list, and **Settings → Agents** renders every provider's auth card from that API (device-code, pasted-code, API-key, or terminal sign-in) instead of hardcoded cards.
+
+**OpenCode provider** — OpenCode is a first-class provider:
+- Model picker with Anthropic / OpenAI models and a reasoning-effort ladder mapped to opencode's `--variant` flag.
+- Browser MCP wired through the container's global `opencode.json`, so the `browser` skill works exactly like Claude's.
+- API-key sign-in (`opencode providers login`) stored in the container's `auth.json` and shared with project containers.
+
+**Freebuff provider** — the free, ad-supported agent runs as a terminal-only provider: pick Freebuff in the chat, open the chat Terminal, and run `freebuff`. Its device-code login (`freebuff login`) is optional.
+
+**Approval gate for Claude Code** — destructive shell commands (recursive deletes of filesystem roots, `mkfs`/`dd` on block devices, fork bombs, `curl|sh`, force-pushes, and more) are paused *before* they execute and presented as an **Approve and run / Deny** card in the chat. A `PreToolUse` hook enforces the host's danger policy even under `--dangerously-skip-permissions`; no decision within 8 minutes denies by default. Codex, Kimi, and OpenCode runs are not gated yet.
+
+**Deployment fixes** — the Docker build fails loudly on network errors, ships node 22 plus every agent CLI (claude, codex, kimi, opencode, freebuff), and the UI replaces `window.prompt` with an in-app project dialog (the browser-prompt API is blocked in embedded webviews).
+
 ## A quick tour
 
 <table>
@@ -80,6 +97,7 @@ See the continuous five-step product tour at [remote.futrx.com](https://remote.f
 - **A browser agents and humans can share** — let an agent browse visually, watch it work, or take over the same session.
 - **Scheduled work** — let a project chat run a one-time or recurring prompt later, even when your browser is closed.
 - **Controls outside the workspace** — manage access, secrets, CPU, memory, lifecycle, and recovery from the Remote host.
+- **Human approval for dangerous commands** — Claude Code pauses destructive shell commands until you approve or deny them in the chat.
 
 ## How it works
 
@@ -149,7 +167,7 @@ Replace `remote.example.com` with the hostname you set up above. The installer d
 
 1. Visit `https://remote.example.com`.
 2. Create the administrator account.
-3. Open **Settings → Agents** and connect Codex, Claude Code, Kimi, or OpenCode.
+3. Open **Settings → Agents** and connect any of the six providers (Claude Code, Codex, Kimi, OpenCode via API key, or Antigravity/Freebuff from the chat Terminal).
 4. Select **New project**.
 5. Start a chat and describe what you want in normal language.
 
@@ -176,13 +194,38 @@ sudo bash /opt/remote.futrx/infra/update.sh
 
 The updater rebuilds the app and project image while preserving project files and provider homes. Coordinate a maintenance window, or use `--skip-workspaces`, when agents are actively running. See [Deployment and operations](docs/04-operations/09-deployment-and-operations.md#update-flow) for details.
 
+## Running this fork with Docker
+
+The app itself runs fine in Docker while project computers use LXD on the host:
+
+```bash
+# From the repository root
+docker build -t remotefutrx-backend:latest .
+
+docker run -d --name remote-backend \
+  -p 7682:7682 \
+  -v "$(pwd)/.docker-data/data:/opt/remote.futrx/data" \
+  -v "$(pwd)/.docker-data/projects:/var/lib/remote/projects" \
+  remotefutrx-backend
+```
+
+The app is then at `http://localhost:7682`.
+
+> [!IMPORTANT]
+> Project computers are **LXD containers**, so the `lxc` CLI must be reachable **inside** the backend container and LXD must run on the host. Without it the app works (auth, settings, agent sign-in, chat) but **New project** fails with `lxc CLI not found on PATH - install LXD on the host first`. The supported path is a Linux server; on Windows you can run LXD inside WSL and expose it as a remote.
+
+> [!NOTE]
+> On Windows with Git Bash, prefix the `docker run` command with `MSYS2_ARG_CONV_EXCL="*"` so Git's path conversion does not rewrite `/opt/...` container paths into Windows paths.
+
+Provider CLI sign-in happens inside the backend container, so the image ships node 22 and the `claude`, `codex`, `kimi`, `opencode`, and `freebuff` CLIs. The `freebuff` CLI downloads its ~50 MB binary on first run.
+
 ## Learn more
 
 - [Documentation](https://docs.remote.futrx.com/) — operator and user guides
 - [System architecture](ARCHITECTURE.md) — components, data flow, and trust boundaries
 - [Project philosophy](docs/01-overview/00-philosophy.md) — why Remote treats each project as a computer
 - [Contributing](CONTRIBUTING.md) — local development and contribution workflow
-- [Issue tracker](https://github.com/futrx-com/remote.futrx.com/issues) — bugs, ideas, and roadmap
+- [Issue tracker](https://github.com/alaaaliwork5-ship-it/remote.futrx/issues) — bugs, ideas, and roadmap
 
 ## License
 
