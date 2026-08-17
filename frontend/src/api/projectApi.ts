@@ -2,6 +2,7 @@ import { requestJson } from "./apiRequest";
 import { projectAccessApi } from "./project/projectAccessApi";
 import { projectAppsApi } from "./project/projectAppsApi";
 import { projectContainerApi } from "./project/projectContainerApi";
+import { projectMemoryApi } from "./project/projectMemoryApi";
 import { projectSecretsApi } from "./project/projectSecretsApi";
 import type { ProjectMeta } from "../models/project";
 import { API_ROUTES } from "../config/routes";
@@ -22,4 +23,5 @@ export const projectApi = {
   ...projectAppsApi,
   ...projectSecretsApi,
   ...projectAccessApi,
+  ...projectMemoryApi,
 };

@@ -177,6 +177,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if len(parts) >= 2 && parts[1] == "memory" {
+		h.handleMemory(w, r, id, parts)
+		return
+	}
+
 	if len(parts) >= 2 && parts[1] == "agent-browser" {
 		h.handleAgentBrowser(w, r, id, parts)
 		return
@@ -458,6 +463,47 @@ func (h *ProjectHandler) HandleTLSAsk(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *ProjectHandler) handleMemory(w http.ResponseWriter, r *http.Request, id serviceproject.ID, parts []string) {
+	// /api/projects/{id}/memory
+	if len(parts) != 2 {
+		httptransport.SendErr(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		memory, err := h.projects.GetMemory(r.Context(), id)
+		if err != nil {
+			sendProjectError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, memory)
+
+	case http.MethodPut:
+		var body struct {
+			Content string `json:"content"`
+			Enabled *bool  `json:"enabled"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&body); err != nil {
+			httptransport.SendErr(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		enabled := true
+		if body.Enabled != nil {
+			enabled = *body.Enabled
+		}
+		memory, err := h.projects.SetMemory(r.Context(), id, body.Content, enabled)
+		if err != nil {
+			sendProjectError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, memory)
+
+	default:
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func (h *ProjectHandler) handleSecrets(w http.ResponseWriter, r *http.Request, id serviceproject.ID, parts []string) {
 	// /api/projects/{id}/secrets[/{key}]
 	if len(parts) == 2 {
@@ -642,7 +688,8 @@ func sendProjectError(w http.ResponseWriter, err error) {
 		errors.Is(err, serviceproject.ErrInvalidSecretKey),
 		errors.Is(err, serviceproject.ErrInvalidLimits):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, serviceproject.ErrSecretsUnavailable):
+	case errors.Is(err, serviceproject.ErrSecretsUnavailable),
+		errors.Is(err, serviceproject.ErrMemoryUnavailable):
 		httptransport.SendErr(w, http.StatusServiceUnavailable, err.Error())
 	case errors.Is(err, serviceproject.ErrNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, "project not found")

@@ -179,7 +179,7 @@ func newAgentBrowserProjectHandler(t *testing.T) (*ProjectHandler, *fakeProjectC
 		Network:     containers,
 		Listeners:   containers,
 		Browser:     fakeProjectBrowser{containers: containers},
-	}, nil, nil)
+	}, nil, nil, nil)
 	project, err := projects.Create(context.Background(), serviceproject.CreateInput{Name: "Browser Project"}, "user@example.com")
 	if err != nil {
 		t.Fatal(err)

@@ -77,6 +77,13 @@ type ScheduleToolIssuer interface {
 	IssueScheduleTool(context.Context, ScheduleToolRequest) (ScheduleToolAccess, error)
 }
 
+// MemoryProvider exposes a project's shared memory document so every run in
+// the project inherits its conventions and decisions. Implemented by the
+// project service.
+type MemoryProvider interface {
+	GetMemory(ctx context.Context, projectID serviceproject.ID) (serviceproject.Memory, error)
+}
+
 // ApprovalGateIssuer mints per-run capabilities for the container-side
 // approval hook. Implemented by service/approval.
 type ApprovalGateIssuer interface {
@@ -103,6 +110,12 @@ func WithApprovalGateIssuer(issuer ApprovalGateIssuer) Option {
 	}
 }
 
+func WithMemoryProvider(provider MemoryProvider) Option {
+	return func(service *Service) {
+		service.memory = provider
+	}
+}
+
 type Service struct {
 	store         servicechat.Repository
 	tmux          TmuxClient
@@ -111,6 +124,7 @@ type Service struct {
 	agents        *agent.Registry
 	scheduleTools ScheduleToolIssuer
 	approvalGate  ApprovalGateIssuer
+	memory        MemoryProvider
 }
 
 func New(
@@ -261,6 +275,11 @@ func (rnr *Service) runPromptAs(
 		effectivePrompt = promptWithVisibleHistory(priorEvents, effectivePrompt)
 	}
 	effectivePrompt = promptWithSelectedSkills(providerID, promptSkills, effectivePrompt)
+	if meta.ProjectID != "" && rnr.memory != nil {
+		if memory, memErr := rnr.memory.GetMemory(ctx, serviceproject.ID(meta.ProjectID)); memErr == nil && memory.Enabled {
+			effectivePrompt = promptWithProjectMemory(memory.Content, effectivePrompt)
+		}
+	}
 
 	provider := rnr.agents.Lookup(providerID)
 	if provider == nil {
@@ -362,6 +381,11 @@ func (rnr *Service) runPromptAs(
 		freshPrompt := promptForMode(meta.Mode, prompt)
 		freshPrompt = promptWithVisibleHistory(priorEvents, freshPrompt)
 		freshPrompt = promptWithSelectedSkills(providerID, promptSkills, freshPrompt)
+		if meta.ProjectID != "" && rnr.memory != nil {
+			if memory, memErr := rnr.memory.GetMemory(ctx, serviceproject.ID(meta.ProjectID)); memErr == nil && memory.Enabled {
+				freshPrompt = promptWithProjectMemory(memory.Content, freshPrompt)
+			}
+		}
 		err = run(freshPrompt, "")
 	}
 	if err != nil && !errors.Is(err, agent.ErrRunFailed) {
@@ -454,6 +478,21 @@ func promptForMode(mode, prompt string) string {
 	default:
 		return prompt
 	}
+}
+
+func promptWithProjectMemory(memory, prompt string) string {
+	memory = strings.TrimSpace(memory)
+	if memory == "" {
+		return prompt
+	}
+	const maxMemoryPromptBytes = 24000
+	if len(memory) > maxMemoryPromptBytes {
+		memory = memory[:maxMemoryPromptBytes] + "\n[...memory truncated]"
+	}
+	return "Project memory — shared context from previous work in this project. Follow it unless the current task says otherwise:\n" +
+		memory +
+		"\n\nCurrent request:\n" +
+		prompt
 }
 
 func promptWithVisibleHistory(events []ChatEvent, prompt string) string {

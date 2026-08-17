@@ -36,6 +36,7 @@ func main() {
 		containerStack.ProjectDependencies(),
 		storeSet.ProjectSecrets,
 		storeSet.ProjectAccess,
+		storeSet.ProjectMemory,
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)

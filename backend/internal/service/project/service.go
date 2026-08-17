@@ -21,6 +21,7 @@ type Service struct {
 	containerBrowser     ContainerBrowser
 	secrets              SecretsRepository
 	access               AccessRepository
+	memory               MemoryRepository
 
 	agentBrowserMu    sync.Mutex
 	agentBrowserInfo  map[ID]AgentBrowserInfo
@@ -42,6 +43,7 @@ func New(
 	containers ContainerDependencies,
 	secrets SecretsRepository,
 	access AccessRepository,
+	memory MemoryRepository,
 ) *Service {
 	return &Service{
 		repo:                 repo,
@@ -53,6 +55,7 @@ func New(
 		containerBrowser:     containers.Browser,
 		secrets:              secrets,
 		access:               access,
+		memory:               memory,
 		agentBrowserInfo:     make(map[ID]AgentBrowserInfo),
 		agentBrowserStart:    make(map[ID]int64),
 	}

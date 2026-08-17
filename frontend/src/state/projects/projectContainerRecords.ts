@@ -1,4 +1,8 @@
-import type { ProjectContainerInfo, ProjectSecret } from "../../models/project";
+import type {
+  ProjectContainerInfo,
+  ProjectMemory,
+  ProjectSecret,
+} from "../../models/project";
 
 export interface ProjectDataLoadSignal {
   cancelled: boolean;
@@ -20,5 +24,11 @@ export interface SecretsRecord {
 export interface AccessRecord {
   loading: boolean;
   data?: string[];
+  error?: string;
+}
+
+export interface MemoryRecord {
+  loading: boolean;
+  data?: ProjectMemory;
   error?: string;
 }

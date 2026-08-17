@@ -1,6 +1,6 @@
 # Project settings
 
-Open a project's settings with the gear icon beside its name in the sidebar. The page has four tabs: **Info**, **Settings**, **Secrets**, and **Sharing**.
+Open a project's settings with the gear icon beside its name in the sidebar. The page has five tabs: **Info**, **Settings**, **Secrets**, **Memory**, and **Sharing**.
 
 ![Project container information, agent versions, and credential-bundle state](/assets/docs/screenshots/01-project-container-info-00m37s.webp "The Info tab exposes the project computer rather than hiding it: runtime identity, tools, mounts, resources, network, and provider state are inspectable.")
 
@@ -76,6 +76,16 @@ Only an administrator can delete a project.
 4. Read the confirmation carefully and approve it.
 
 Deletion removes the container, project metadata, project access list, secret store, durable workspace, and provider homes. Chat records are stored separately and the backend does not reliably cascade-delete every chat that referenced the project. Do not treat the sidebar confirmation as a backup or complete data-retention policy.
+
+## Memory
+
+Use **Memory** to give every agent in this project a shared, persistent context document.
+
+The editor stores a plain-text document (up to 32 KB) with an **Inject into agent prompts** toggle. When enabled, the document is prepended to the prompt of every agent run in the project — including recovered sessions — so conventions, decisions, and project state survive across chats and agent sessions. Keep it short and factual; the agents treat it as instructions to follow unless the current task says otherwise.
+
+![Project memory editor with enable toggle, character count, and save state](/assets/docs/screenshots/placeholder-memory.webp)
+
+Memory is stored per project on the host (`<data>/projectmemory/<project-id>.json`, mode 0600) and persists across container replacement. Any project member can read or edit it, like secrets.
 
 ## Secrets
 

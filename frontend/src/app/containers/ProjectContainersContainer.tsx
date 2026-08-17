@@ -23,7 +23,7 @@ export function ProjectContainersContainer({
 }) {
   const { auth } = useAuthContext();
   const controller = useProjectContainersController(projects, selectedProjectId);
-  const { selectedProject, info, secrets, access } = controller;
+  const { selectedProject, info, secrets, access, memory } = controller;
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
   const serverInfo = useServerInfo(activeTab === "settings");
 
@@ -40,6 +40,7 @@ export function ProjectContainersContainer({
       infoRecord={info.record}
       secretsRecord={secrets.record}
       accessRecord={access.record}
+      memoryRecord={memory.record}
       refreshing={controller.refreshing}
       isAdmin={auth.isAdmin}
       serverMemoryTotalBytes={serverInfo.info?.memory.totalBytes}
@@ -50,6 +51,7 @@ export function ProjectContainersContainer({
       onTabChange={setActiveTab}
       onSaveSecret={secrets.save}
       onDeleteSecret={secrets.remove}
+      onSaveMemory={memory.save}
       onAddMember={access.add}
       onRemoveMember={access.remove}
       onRepairNetwork={info.repairNetwork}

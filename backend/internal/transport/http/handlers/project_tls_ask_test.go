@@ -79,7 +79,7 @@ func newTLSAskProjectHandler(t *testing.T, publicHostname string) (*ProjectHandl
 	if err != nil {
 		t.Fatal(err)
 	}
-	projects := serviceproject.New(repo, serviceproject.ContainerDependencies{}, nil, nil)
+	projects := serviceproject.New(repo, serviceproject.ContainerDependencies{}, nil, nil, nil)
 	project, err := projects.Create(
 		context.Background(),
 		serviceproject.CreateInput{Name: "TLS Ask Project"},

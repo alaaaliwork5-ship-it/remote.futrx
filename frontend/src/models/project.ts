@@ -132,6 +132,12 @@ export interface ProjectSecret {
   updatedAt: number;
 }
 
+export interface ProjectMemory {
+  content: string;
+  enabled: boolean;
+  updatedAt: number;
+}
+
 export interface ContainerApp {
   port: number;
   address?: string;

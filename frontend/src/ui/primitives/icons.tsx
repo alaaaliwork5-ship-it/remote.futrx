@@ -6,6 +6,7 @@ type P = JSX.SVGAttributes<SVGSVGElement>;
 const base = { fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round" as const, "stroke-linejoin": "round" as const, viewBox: "0 0 24 24" };
 
 export const Plus = (p: P) => (<svg {...base} {...p}><path d="M12 5v14M5 12h14"/></svg>);
+export const BookOpen = (p: P) => (<svg {...base} {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>);
 export const X = (p: P) => (<svg {...base} {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>);
 export const Menu = (p: P) => (<svg {...base} {...p}><path d="M3 6h18M3 12h18M3 18h18"/></svg>);
 export const Search = (p: P) => (<svg {...base} {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);

@@ -184,6 +184,7 @@ There is one fixed 1366×768 browser session per project, unrestricted network e
 | Info | Container/OS/resources/disks/network/mounts/limits/agent versions/auth-bundle state, refresh, network repair |
 | Settings | Effective and override limits; start, stop, force restart, admin-only delete |
 | Secrets | Add, reveal, hide, edit, and delete environment values, including multiline values |
+| Memory | Edit a shared context document (≤32 KB) injected into every agent prompt in the project; enable/disable toggle |
 | Sharing | Add or remove registered project members |
 
 Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone may change limits or delete a project.
@@ -206,6 +207,7 @@ Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone ma
 | `/workspace` | Yes | Yes |
 | Provider homes | Yes | Yes |
 | Project secrets | Yes | Yes |
+| Project memory | Yes | Yes |
 | Agent Browser profile | Yes | Yes |
 | Scheduled-task definitions and run state | Yes | Yes |
 | Antigravity sign-in and conversation state | Yes, until container replacement | No |

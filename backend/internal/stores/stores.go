@@ -13,6 +13,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectaccess"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectmemory"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
@@ -28,6 +29,7 @@ type Stores struct {
 	Projects       serviceproject.Repository
 	ProjectSecrets serviceproject.SecretsRepository
 	ProjectAccess  serviceproject.AccessRepository
+	ProjectMemory  serviceproject.MemoryRepository
 	Schedules      serviceschedule.Repository
 	Auth           AuthStore
 	Users          serviceuser.Repository
@@ -55,6 +57,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init project access store: %w", err)
 	}
 
+	projectMemory, err := fileprojectmemory.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init project memory store: %w", err)
+	}
+
 	schedules, err := fileschedule.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init scheduled tasks store: %w", err)
@@ -75,6 +82,7 @@ func New(dataDir string) (Stores, error) {
 		Projects:       projects,
 		ProjectSecrets: projectSecrets,
 		ProjectAccess:  projectAccess,
+		ProjectMemory:  projectMemory,
 		Schedules:      schedules,
 		Auth:           fileauth.New(dataDir),
 		Users:          users,

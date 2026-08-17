@@ -51,6 +51,8 @@ This fork builds on upstream Remote with provider, safety, and deployment improv
 
 **Approval gate for Claude Code** — destructive shell commands (recursive deletes of filesystem roots, `mkfs`/`dd` on block devices, fork bombs, `curl|sh`, force-pushes, and more) are paused *before* they execute and presented as an **Approve and run / Deny** card in the chat. A `PreToolUse` hook enforces the host's danger policy even under `--dangerously-skip-permissions`; no decision within 8 minutes denies by default. Codex, Kimi, and OpenCode runs are not gated yet.
 
+**Project memory** — every project has a shared context document (Settings → Memory, ≤ 32 KB) that is injected into the prompt of every agent run in that project, so conventions, decisions, and state survive across chats and sessions. Stored per project on the host with an enable/disable toggle.
+
 **Deployment fixes** — the Docker build fails loudly on network errors, ships node 22 plus every agent CLI (claude, codex, kimi, opencode, freebuff), and the UI replaces `window.prompt` with an in-app project dialog (the browser-prompt API is blocked in embedded webviews).
 
 ## A quick tour

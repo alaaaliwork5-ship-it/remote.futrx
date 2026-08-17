@@ -38,6 +38,7 @@ type Dependencies struct {
 	Projects          serviceproject.Repository
 	ProjectSecrets    serviceproject.SecretsRepository
 	ProjectAccess     serviceproject.AccessRepository
+	ProjectMemory     serviceproject.MemoryRepository
 	Schedules         serviceschedule.Repository
 	Auth              AuthStore
 	Users             serviceuser.Repository
@@ -102,7 +103,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	projects := notifyingProjectRepository{Repository: deps.Projects, workspace: workspace}
 	definitions := agentDefinitions()
 	profiles := profilesFromDefinitions(definitions)
-	projectService := serviceproject.New(projects, deps.ProjectContainers, deps.ProjectSecrets, deps.ProjectAccess)
+	projectService := serviceproject.New(projects, deps.ProjectContainers, deps.ProjectSecrets, deps.ProjectAccess, deps.ProjectMemory)
 	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
 	runs = runhub.New(chats)
 	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
@@ -163,6 +164,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		agents,
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithApprovalGateIssuer(approvals),
+		prompt.WithMemoryProvider(projectService),
 	)
 	scheduleService := serviceschedule.New(
 		deps.Schedules,

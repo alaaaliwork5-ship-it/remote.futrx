@@ -76,6 +76,8 @@ because users authenticate `agy` inside each project.
 | DELETE | `/api/projects/{id}/agent-browser?scope=view` | Stop only the noVNC view |
 | GET | `/api/projects/{id}/secrets` | List project secrets |
 | PUT, DELETE | `/api/projects/{id}/secrets/{key}` | Set or delete one secret |
+| GET | `/api/projects/{id}/memory` | Get the project's shared memory document |
+| PUT | `/api/projects/{id}/memory` | Replace the memory document (content, enabled) |
 | GET, POST | `/api/projects/{id}/access` | List members or add a registered email |
 | DELETE | `/api/projects/{id}/access/{email}` | Remove a member |
 | GET | `/internal/tls-ask?domain=...` | Caddy allow-check for on-demand project certificates |

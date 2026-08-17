@@ -1,6 +1,7 @@
 import type { ComponentChildren, ComponentType } from "preact";
 import type {
   AccessRecord,
+  MemoryRecord,
   ProjectContainerRecord,
   SecretsRecord,
 } from "../../state/projects/projectContainerRecords";
@@ -10,14 +11,20 @@ import {
   ContainerStateBadge,
   ProjectInfoSection,
 } from "./project-containers/ProjectInfoSection";
+import { ProjectMemorySection } from "./project-containers/ProjectMemorySection";
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
 import { formatRelativeTime as fmtRelative } from "./project-containers/projectContainerFormat";
-import type { ContainerLimits, ProjectContainerInfo, ProjectMeta } from "../../models/project";
-import { ChevronLeft, Info, Key, Loader, Menu, RotateCcw, Settings, Users } from "../primitives/icons";
+import type {
+  ContainerLimits,
+  ProjectContainerInfo,
+  ProjectMemory,
+  ProjectMeta,
+} from "../../models/project";
+import { BookOpen, ChevronLeft, Info, Key, Loader, Menu, RotateCcw, Settings, Users } from "../primitives/icons";
 
-export type ProjectSettingsTab = "info" | "settings" | "secrets" | "sharing";
+export type ProjectSettingsTab = "info" | "settings" | "secrets" | "memory" | "sharing";
 
 const tabs: Array<{
   id: ProjectSettingsTab;
@@ -44,6 +51,12 @@ const tabs: Array<{
     Icon: Key,
   },
   {
+    id: "memory",
+    label: "Memory",
+    description: "Shared context injected into every agent prompt in this project.",
+    Icon: BookOpen,
+  },
+  {
     id: "sharing",
     label: "Sharing",
     description: "Control which registered users can access this project.",
@@ -57,6 +70,7 @@ export function ProjectContainersPage({
   infoRecord,
   secretsRecord,
   accessRecord,
+  memoryRecord,
   refreshing,
   isAdmin,
   serverMemoryTotalBytes,
@@ -67,6 +81,7 @@ export function ProjectContainersPage({
   onTabChange,
   onSaveSecret,
   onDeleteSecret,
+  onSaveMemory,
   onAddMember,
   onRemoveMember,
   onRepairNetwork,
@@ -81,6 +96,7 @@ export function ProjectContainersPage({
   infoRecord: ProjectContainerRecord;
   secretsRecord: SecretsRecord;
   accessRecord: AccessRecord;
+  memoryRecord: MemoryRecord;
   refreshing: boolean;
   isAdmin: boolean;
   serverMemoryTotalBytes?: number;
@@ -91,6 +107,7 @@ export function ProjectContainersPage({
   onTabChange: (tab: ProjectSettingsTab) => void;
   onSaveSecret: (key: string, value: string) => Promise<void>;
   onDeleteSecret: (key: string) => Promise<void>;
+  onSaveMemory: (content: string, enabled: boolean) => Promise<ProjectMemory>;
   onAddMember: (email: string) => Promise<void>;
   onRemoveMember: (email: string) => Promise<void>;
   onRepairNetwork: () => Promise<void>;
@@ -226,6 +243,16 @@ export function ProjectContainersPage({
                   </ProjectSettingsPanel>
                 )}
 
+                {activeTab === "memory" && (
+                  <ProjectSettingsPanel
+                    title="Project memory"
+                    description={memoryDescription(memoryRecord)}
+                    Icon={BookOpen}
+                  >
+                    <ProjectMemorySection record={memoryRecord} onSave={onSaveMemory} />
+                  </ProjectSettingsPanel>
+                )}
+
                 {activeTab === "sharing" && (
                   <ProjectSettingsPanel
                     title="Project access"
@@ -332,6 +359,14 @@ function accessDescription(record: AccessRecord): string {
   if (record.error) return "Project members could not be loaded.";
   const count = record.data?.length ?? 0;
   return `${count} project member${count === 1 ? "" : "s"}`;
+}
+
+function memoryDescription(record: MemoryRecord): string {
+  if (record.loading && !record.data) return "Loading project memory…";
+  if (record.error) return "Project memory could not be loaded.";
+  if (!record.data?.content) return "No memory saved yet.";
+  const chars = record.data.content.length;
+  return `${record.data.enabled ? "Injected into prompts" : "Paused"} · ${chars.toLocaleString()} chars`;
 }
 
 function ProjectHeader({

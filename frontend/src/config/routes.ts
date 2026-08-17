@@ -89,6 +89,7 @@ export const API_ROUTES = {
     access: (id: string) => `/api/projects/${encodeURIComponent(id)}/access`,
     accessMember: (id: string, email: string) =>
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
+    memory: (id: string) => `/api/projects/${encodeURIComponent(id)}/memory`,
   },
   agents: "/api/agents",
   settings: "/api/me/settings",
