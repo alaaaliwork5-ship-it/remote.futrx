@@ -14,7 +14,7 @@ The preference is saved to your Remote user settings. Wait for the **Saved** sta
 
 ## Agents
 
-Claude, Codex, and Kimi authentication is host-wide and
+Claude, Codex, Kimi, and OpenCode authentication is host-wide and
 administrator-managed. Sign in once on the parent host; Remote then seeds
 those provider credentials into project containers. Antigravity uses a
 different per-project flow described below.
@@ -51,6 +51,34 @@ Remote may also detect a configured API key, but subscription/device authenticat
 4. Approve the account.
 5. Return to Remote and wait for the connected state.
 
+### Connect OpenCode
+
+OpenCode routes to any models.dev provider, and its CLI (1.18.x) authenticates with provider API keys — there is no device-code login flow. Remote offers two ways to give OpenCode a key:
+
+1. **Add an API key in Settings:** Under **OpenCode authentication**, pick a provider (Anthropic, OpenAI, or Google Gemini), paste the key, and save. Remote stores it in OpenCode's `auth.json` on the host, which seeds into every project container.
+2. **Add a project secret:** Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or any key OpenCode recognizes as a project secret; OpenCode picks it up from the container environment.
+
+You can also run `opencode providers login` once in a chat Terminal for the interactive flow. Host-wide OpenCode credentials live under `~/.local/share/opencode` and are synced into project containers like the other host providers.
+
+### Use Freebuff
+
+Freebuff is the free, ad-supported coding agent. Its CLI is interactive-only
+(no headless `run` command), so like Antigravity it appears in the chat
+provider picker but not in the global **Agents** cards, and it runs in the
+chat Terminal. It needs no host credentials at all — no account and no API
+key.
+
+1. Open a chat in the project.
+2. Select **Freebuff** as the provider.
+3. Select **Open Terminal** and run `freebuff`.
+4. (Optional) Complete the in-TUI login Freebuff shows on first run.
+5. Describe your task inside Freebuff's interface.
+
+A prompt sent in the chat with Freebuff selected returns instructions to open
+the Terminal, because Remote cannot drive the interactive-only CLI headlessly.
+The `freebuff` CLI is pinned in the base image; full automation will follow
+when Freebuff ships a headless mode.
+
 ### Use Antigravity
 
 Antigravity appears in the chat provider picker but not in the global
@@ -73,17 +101,17 @@ container is replaced; sign in again after an upgrade or recovery that
 recreates the container.
 
 Antigravity does not satisfy Remote's initial “at least one provider connected”
-gate. A server administrator must still connect Claude, Codex, or Kimi during
-onboarding.
+gate. A server administrator must still connect Claude, Codex, Kimi, or
+OpenCode during onboarding.
 
 ### Shared-provider implications
 
-- Every user and project shares the same host Claude, Codex, and Kimi accounts
-  and their quotas.
-- Those three provider credentials are copied into project credential
+- Every user and project shares the same host Claude, Codex, Kimi, and OpenCode
+  accounts and their quotas.
+- Those provider credentials are copied into project credential
   locations.
 - An agent that can read its project credential files can act with that provider authority.
-- Claude, Codex, and Kimi homes are durable but separate by provider format, not separate security principals.
+- Claude, Codex, Kimi, and OpenCode homes are durable but separate by provider format, not separate security principals.
 - Re-authentication can affect every project.
 - Antigravity is project-local rather than host-wide, but its credential state
   is still readable by container root and shared by everyone with authority in
@@ -165,6 +193,7 @@ Use the sign-out control in the account footer. This clears the platform session
 | View own account and server information | Yes | Yes |
 | Connect or refresh agent providers | Yes | No |
 | Sign in to Antigravity inside an assigned project | Yes | Yes |
+| Run Freebuff inside an assigned project | Yes | Yes |
 | Configure Google OAuth | Yes | No |
 | Add, remove, promote, or demote users | Yes | No |
 

@@ -230,8 +230,8 @@ The capability envelope should be complete enough that the agent can move from i
 | Filesystem | Read and write the complete project workspace and all provider homes mounted in that project container |
 | Package installation | `apt`, `npm`, `pip`, and project-local package managers may install what the work requires |
 | Core toolchain | Git, SSH client, `gh`, `jq`, build tools, Python, Node.js 22, npm, and npx |
-| Agent choice | Claude Code, Codex, Kimi Code, and Antigravity at pinned versions, behind one provider-neutral run model |
-| Skills | Project-authored procedures under `/workspace/.agents/skills`, including skills the agent creates for future work. Claude and Codex receive general selected-skill triggers; Kimi and Antigravity do not. Scheduled Tasks is the explicit provider-neutral exception |
+| Agent choice | Claude Code, Codex, Kimi Code, Antigravity, OpenCode, and Freebuff at pinned versions, behind one provider-neutral run model |
+| Skills | Project-authored procedures under `/workspace/.agents/skills`, including skills the agent creates for future work. Claude and Codex receive general selected-skill triggers; Kimi, Antigravity, and OpenCode receive instruction-based triggers. Scheduled Tasks is the explicit provider-neutral exception |
 | Processes | Foreground and background processes; background work may continue between prompts while the container stays running |
 | Network | Outbound networking and project app listeners; the current project instructions describe network access as open |
 | Web applications | Any non-loopback TCP listener on an allowed preview port from 1024 through 65535 can be discovered and exposed through an authenticated project URL |
@@ -250,7 +250,7 @@ Broad agent authority is paired with a complete control envelope. The human shou
 | Control | Human or host capability |
 | --- | --- |
 | Identity | Claim the server, sign in, manage registered users, and separate administrators from members |
-| Provider identity | Administrators connect, refresh, or replace host-wide Claude, Codex, and Kimi identities; Antigravity signs in per project and has no global card |
+| Provider identity | Administrators connect, refresh, or replace host-wide Claude, Codex, Kimi, and OpenCode identities; Antigravity signs in per project and has no global card |
 | Project access | Current members can add or remove registered project members; the backend gates project API, chat, upload, terminal, and preview resources |
 | Project secrets | Current members can create, read, change, or delete the authoritative secret record; propagation to and removal from managed copies is currently best-effort |
 | Agent selection | Choose provider, model, reasoning effort, service tier or speed, mode, and selected skills |

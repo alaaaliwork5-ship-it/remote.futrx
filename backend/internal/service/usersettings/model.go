@@ -41,6 +41,8 @@ const (
 	ChatProviderCodex       ChatProvider = "codex"
 	ChatProviderKimi        ChatProvider = "kimi"
 	ChatProviderAntigravity ChatProvider = "antigravity"
+	ChatProviderOpenCode    ChatProvider = "opencode"
+	ChatProviderFreebuff    ChatProvider = "freebuff"
 )
 
 type ChatMode string
@@ -126,7 +128,7 @@ func ValidTheme(theme Theme) bool {
 
 func ValidChatProvider(provider ChatProvider) bool {
 	switch provider {
-	case ChatProviderClaude, ChatProviderCodex, ChatProviderKimi, ChatProviderAntigravity:
+	case ChatProviderClaude, ChatProviderCodex, ChatProviderKimi, ChatProviderAntigravity, ChatProviderOpenCode, ChatProviderFreebuff:
 		return true
 	default:
 		return false

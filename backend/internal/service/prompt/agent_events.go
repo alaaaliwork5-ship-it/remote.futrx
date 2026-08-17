@@ -23,6 +23,8 @@ func (rnr *Service) emitAgentEvent(
 				m.KimiSessionID = ev.SessionID
 			case agent.ProviderAntigravity:
 				m.AntigravitySessionID = ev.SessionID
+			case agent.ProviderOpenCode:
+				m.OpenCodeSessionID = ev.SessionID
 			default:
 				m.ClaudeSessionID = ev.SessionID
 			}
@@ -57,6 +59,8 @@ func chatEventFromAgentEvent(ev agent.Event) (ChatEvent, bool) {
 			out.KimiSessionID = ev.SessionID
 		case agent.ProviderAntigravity:
 			out.AntigravitySessionID = ev.SessionID
+		case agent.ProviderOpenCode:
+			out.OpenCodeSessionID = ev.SessionID
 		default:
 			out.ClaudeSessionID = ev.SessionID
 		}
@@ -100,6 +104,10 @@ func chatProviderFromAgentProvider(provider agent.ProviderID) servicechat.Provid
 		return servicechat.ProviderKimi
 	case agent.ProviderAntigravity:
 		return servicechat.ProviderAntigravity
+	case agent.ProviderOpenCode:
+		return servicechat.ProviderOpenCode
+	case agent.ProviderFreebuff:
+		return servicechat.ProviderFreebuff
 	default:
 		return servicechat.ProviderClaude
 	}

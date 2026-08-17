@@ -14,6 +14,7 @@ import (
 	containerlifecycle "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lifecycle"
 	containerlisteners "github.com/futrx-com/remote.futrx.com/internal/integration/containers/listeners"
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
+	containerapprovalgate "github.com/futrx-com/remote.futrx.com/internal/integration/containers/approvalgate"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
 	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
 	containerworkspace "github.com/futrx-com/remote.futrx.com/internal/integration/containers/workspace"
@@ -41,6 +42,7 @@ type ContainerStack struct {
 	CLI           *servicecli.Provisioner
 	Browser       *servicebrowser.Service
 	ScheduleTools *containerscheduletools.Adapter
+	ApprovalGate  *containerapprovalgate.Adapter
 	Listeners     *containerlisteners.Scanner
 	Network       *containernetwork.Repairer
 	Workspace     *containerworkspace.Provisioner
@@ -77,6 +79,7 @@ func (s ContainerStack) AgentDependencies() provisioning.ContainerDependencies {
 		Workspace:     s.Workspace,
 		Browser:       s.Browser,
 		ScheduleTools: s.ScheduleTools,
+		ApprovalGate:  s.ApprovalGate,
 		Lifecycle:     s.Lifecycle,
 	}
 }
@@ -103,6 +106,7 @@ func NewContainerStack(
 	}, containerbrowser.VNCPort)
 	codeServer := containercodeserver.NewProvisioner(runner)
 	scheduleTools := containerscheduletools.NewAdapter(runner, publisher)
+	approvalGate := containerapprovalgate.NewAdapter(runner, publisher)
 	workspace := containerworkspace.NewProvisioner(
 		runner,
 		profiles,
@@ -153,6 +157,7 @@ func NewContainerStack(
 		CLI:           cli,
 		Browser:       browser,
 		ScheduleTools: scheduleTools,
+		ApprovalGate:  approvalGate,
 		Listeners:     listeners,
 		Network:       network,
 		Workspace:     workspace,

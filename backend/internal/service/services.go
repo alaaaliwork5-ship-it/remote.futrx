@@ -16,6 +16,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	serviceapproval "github.com/futrx-com/remote.futrx.com/internal/service/approval"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
@@ -65,7 +66,12 @@ type Services struct {
 	Prompt       *prompt.Service
 	Schedules    *serviceschedule.Service
 	ScheduleCaps *schedulecapability.Registry
+	Approvals    *serviceapproval.Service
 	AgentAuth    *agentauth.Registry
+	// AgentCatalog is the transport-facing description of every registered
+	// agent (display metadata + live auth state), consumed by the frontend's
+	// dynamically rendered agent settings cards.
+	AgentCatalog []AgentInfo
 	Runs         *runhub.Hub
 	Workspace    *workspacehub.Hub
 	Auth         *serviceauth.Service
@@ -139,12 +145,16 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			return Services{}, err
 		}
 	}
+	// Bindings retain catalog order, so each definition lines up with the
+	// binding registered for the same provider.
+	catalog := DescribeAgentCatalog(definitions, agentAuth.Bindings())
 	userService := serviceuser.New(deps.Users)
 	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL)
 	if err != nil {
 		return Services{}, err
 	}
 	scheduleCaps := schedulecapability.New(deps.AuthBaseURL)
+	approvals := serviceapproval.New(deps.AuthBaseURL, runs.BroadcastTransient)
 	promptService := prompt.New(
 		chats,
 		deps.TmuxClient,
@@ -152,6 +162,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		runs,
 		agents,
 		prompt.WithScheduleToolIssuer(scheduleCaps),
+		prompt.WithApprovalGateIssuer(approvals),
 	)
 	scheduleService := serviceschedule.New(
 		deps.Schedules,
@@ -185,7 +196,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Prompt:       promptService,
 		Schedules:    scheduleService,
 		ScheduleCaps: scheduleCaps,
+		Approvals:    approvals,
 		AgentAuth:    agentAuth,
+		AgentCatalog: catalog,
 		Runs:         runs,
 		Workspace:    workspace,
 		Auth:         authService,

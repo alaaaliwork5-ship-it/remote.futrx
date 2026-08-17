@@ -13,6 +13,7 @@ type Flow string
 const (
 	FlowCode   Flow = "code"
 	FlowDevice Flow = "device"
+	FlowAPIKey Flow = "apikey"
 )
 
 var ErrUnsupportedFlow = errors.New("operation is not supported by this agent auth flow")
@@ -32,6 +33,7 @@ type Binding struct {
 	cancelCode       func(context.Context) error
 	isCodeInputError func(error) bool
 	startDevice      func(context.Context) (DeviceState, error)
+	saveKey          func(context.Context, string, string) error
 }
 
 func NewCodeBinding(id agent.ProviderID, service *CodeService) Binding {
@@ -58,6 +60,18 @@ func NewDeviceBinding[S any](id agent.ProviderID, service *DeviceService[S]) Bin
 	binding.subscribe = statusSubscription(service.Subscribe)
 	binding.authenticated = service.Authenticated
 	binding.startDevice = service.StartDeviceLogin
+	return binding
+}
+
+func NewAPIKeyBinding[S any](id agent.ProviderID, service *APIKeyService[S]) Binding {
+	binding := Binding{id: id, flow: FlowAPIKey}
+	if service == nil {
+		return binding
+	}
+	binding.status = func() any { return service.Status() }
+	binding.subscribe = statusSubscription(service.Subscribe)
+	binding.authenticated = service.Authenticated
+	binding.saveKey = service.SaveKey
 	return binding
 }
 
@@ -118,6 +132,13 @@ func (b Binding) StartDevice(ctx context.Context) (DeviceState, error) {
 		return DeviceState{}, ErrUnsupportedFlow
 	}
 	return b.startDevice(ctx)
+}
+
+func (b Binding) SaveKey(ctx context.Context, provider, key string) error {
+	if b.saveKey == nil {
+		return ErrUnsupportedFlow
+	}
+	return b.saveKey(ctx, provider, key)
 }
 
 // Subscription reads concrete provider status values from their original

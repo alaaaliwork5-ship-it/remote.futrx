@@ -409,6 +409,10 @@ type fakeCodexScheduleTools struct{}
 
 func (fakeCodexScheduleTools) Ensure(context.Context, string) error { return nil }
 
+type fakeCodexApprovalGate struct{}
+
+func (fakeCodexApprovalGate) Ensure(context.Context, string) error { return nil }
+
 func codexContainerDependencies(
 	credentials *fakeCodexCredentials,
 	browser provisioning.BrowserProvisioner,
@@ -422,6 +426,7 @@ func codexContainerDependencies(
 		Workspace:     fakeCodexWorkspace{},
 		Browser:       browser,
 		ScheduleTools: fakeCodexScheduleTools{},
+		ApprovalGate:  fakeCodexApprovalGate{},
 		Lifecycle:     fakeCodexLifecycle{},
 	}
 }

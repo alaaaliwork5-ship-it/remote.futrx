@@ -1,0 +1,11 @@
+.git
+.gitignore
+.gitattributes
+.docker-data
+frontend
+docs
+infra
+e2e
+*.md
+Dockerfile
+.dockerignore

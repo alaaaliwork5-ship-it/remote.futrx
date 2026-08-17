@@ -1,14 +1,12 @@
 import type { AppearanceTheme } from "../../models/settings";
-import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
+import type { AgentInfo } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Bot, ChevronLeft, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
+import { Bot, ChevronLeft, Download, Info, Loader, Menu, Monitor, Users } from "../primitives/icons";
+import { AgentAuthCard } from "./AgentAuthCard";
 import { AppearanceSettings } from "./AppearanceSettings";
-import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
-import { CodexAuthSettings } from "./CodexAuthSettings";
-import { KimiAuthSettings } from "./KimiAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
@@ -74,17 +72,8 @@ export function SettingsPage({
   appearanceLoading,
   appearanceSaving,
   appearanceError,
-  codexAuthenticated,
-  codexUsesApiKey,
-  codexDeviceLogin,
-  codexLoading,
-  codexStarting,
-  codexError,
-  kimiAuthenticated,
-  kimiDeviceLogin,
-  kimiLoading,
-  kimiStarting,
-  kimiError,
+  agents,
+  agentsLoading,
   onBack,
   onHamburger,
   onTabChange,
@@ -92,8 +81,6 @@ export function SettingsPage({
   onCheckForUpdates,
   onApplyUpdate,
   onAppearanceThemeChange,
-  onStartCodexDeviceLogin,
-  onStartKimiDeviceLogin,
 }: {
   activeTab: SettingsTab;
   currentEmail: string;
@@ -114,17 +101,8 @@ export function SettingsPage({
   appearanceLoading: boolean;
   appearanceSaving: boolean;
   appearanceError: string | null;
-  codexAuthenticated: boolean;
-  codexUsesApiKey: boolean;
-  codexDeviceLogin?: CodexDeviceLogin;
-  codexLoading: boolean;
-  codexStarting: boolean;
-  codexError: string | null;
-  kimiAuthenticated: boolean;
-  kimiDeviceLogin?: KimiDeviceLogin;
-  kimiLoading: boolean;
-  kimiStarting: boolean;
-  kimiError: string | null;
+  agents: AgentInfo[] | null;
+  agentsLoading: boolean;
   onBack: () => void;
   onHamburger: () => void;
   onTabChange: (tab: SettingsTab) => void;
@@ -132,8 +110,6 @@ export function SettingsPage({
   onCheckForUpdates: () => Promise<void>;
   onApplyUpdate: (tag?: string) => Promise<void>;
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
-  onStartCodexDeviceLogin: () => Promise<void>;
-  onStartKimiDeviceLogin: () => Promise<void>;
 }) {
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
@@ -208,24 +184,15 @@ export function SettingsPage({
                     </div>
                   </div>
                   <div class="p-3 space-y-3">
-                    <ClaudeAuthSettings />
-                    <CodexAuthSettings
-                      authenticated={codexAuthenticated}
-                      usesApiKey={codexUsesApiKey}
-                      deviceLogin={codexDeviceLogin}
-                      loading={codexLoading}
-                      starting={codexStarting}
-                      error={codexError}
-                      onStartDeviceLogin={onStartCodexDeviceLogin}
-                    />
-                    <KimiAuthSettings
-                      authenticated={kimiAuthenticated}
-                      deviceLogin={kimiDeviceLogin}
-                      loading={kimiLoading}
-                      starting={kimiStarting}
-                      error={kimiError}
-                      onStartDeviceLogin={onStartKimiDeviceLogin}
-                    />
+                    {agentsLoading ? (
+                      <div class="flex items-center gap-2 px-1 py-2 text-[13px] text-ink-300">
+                        <Loader class="w-4 h-4 animate-spin" /> Loading agents…
+                      </div>
+                    ) : (
+                      (agents ?? []).map((agent) => (
+                        <AgentAuthCard key={agent.id} agent={agent} />
+                      ))
+                    )}
                   </div>
                 </div>
               ) : (

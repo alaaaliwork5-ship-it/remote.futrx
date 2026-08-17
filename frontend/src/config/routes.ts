@@ -7,6 +7,9 @@ function applicationPath(path: ApplicationPath): ApplicationPath {
 export const API_ROUTES = {
   authSession: "/auth/me",
   googleOAuth: "/api/admin/auth/google",
+  approvals: {
+    decision: (id: string) => `/api/approvals/${encodeURIComponent(id)}/decision`,
+  },
   chats: {
     collection: "/api/chats",
     item: (id: string) => `/api/chats/${encodeURIComponent(id)}`,
@@ -57,6 +60,10 @@ export const API_ROUTES = {
     status: "/api/kimi/auth-status",
     startDeviceLogin: "/api/kimi/login/device",
   },
+  opencodeAuth: {
+    status: "/api/opencode/auth-status",
+    startDeviceLogin: "/api/opencode/login/device",
+  },
   projects: {
     collection: "/api/projects",
     item: (id: string) => `/api/projects/${encodeURIComponent(id)}`,
@@ -83,6 +90,7 @@ export const API_ROUTES = {
     accessMember: (id: string, email: string) =>
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
   },
+  agents: "/api/agents",
   settings: "/api/me/settings",
   serverInfo: "/api/server/info",
   selfUpdate: {
@@ -106,6 +114,7 @@ export const WEB_SOCKET_ROUTES = {
   claudeAuthStatus: applicationPath("/ws/claude/auth-status"),
   codexAuthStatus: applicationPath("/ws/codex/auth-status"),
   kimiAuthStatus: applicationPath("/ws/kimi/auth-status"),
+  opencodeAuthStatus: applicationPath("/ws/opencode/auth-status"),
   chat: (chatId: string, sinceSeq: number): ApplicationPath => {
     const route = applicationPath(`/ws/chat/${encodeURIComponent(chatId)}`);
     return sinceSeq > 0

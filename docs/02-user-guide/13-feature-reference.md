@@ -71,7 +71,7 @@ The placeholder mentions `@` files and `/` commands, but the current source has 
 | Error block | Run and transport failures render in the thread |
 | Schedules drawer | Project-chat header lists, edits, arms, pauses, runs, and deletes scheduled tasks |
 
-There is no approval workflow in the current chat transport. Project agents run with provider approval/sandbox bypasses inside the project container.
+Approval for dangerous shell commands is built into Claude Code project runs: a PreToolUse hook pauses commands that match the host's danger policy (recursive deletes of filesystem roots, `mkfs`/`dd` on block devices, fork bombs, privilege escalation, remote `curl|sh`, force-pushes, and similar) and renders an **Approve and run** / **Deny** card in the chat. Denied commands never execute; a decision timeout or run cancellation denies by default. Safe commands pass through without a round-trip, and Codex/Kimi/OpenCode runs are not gated yet (they have no equivalent headless pre-execution hook).
 
 ## Providers and current differences
 
@@ -223,7 +223,7 @@ Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone ma
 - anonymous/public preview sharing;
 - read-only project membership;
 - per-user provider accounts or quotas;
-- enforced approval prompts for agent tools;
+- approval gating for Codex, Kimi, and OpenCode tool calls (Claude Code is covered);
 - durable server-side prompt queues;
 - run reattachment after backend restart;
 - terminal reconnect;

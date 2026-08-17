@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import type { AssistantMessagePart } from "../../../models/chatMessage";
+import { ApprovalCall } from "../tool-calls/ApprovalCall";
 import { ToolCall } from "../tool-calls/ToolCall";
 import { StreamingText } from "./StreamingText";
 import { ToolGroup } from "./ToolGroup";
@@ -68,6 +69,11 @@ function renderAssistantParts(
           {part.text}
         </div>
       );
+      return;
+    }
+
+    if (part.kind === "approval") {
+      rendered.push(<ApprovalCall key={part.approvalId} part={part} />);
       return;
     }
 

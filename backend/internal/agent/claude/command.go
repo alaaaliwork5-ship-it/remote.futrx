@@ -35,6 +35,9 @@ func (p *Provider) args(req agent.RunRequest) []string {
 	if req.EnableBrowser {
 		args = append(args, "--mcp-config", browserMCPConfigPath)
 	}
+	if req.EnableApprovalGate {
+		args = append(args, "--settings", approvalSettingsPath)
+	}
 	return args
 }
 
@@ -151,6 +154,11 @@ func (p *Provider) buildCmd(
 		if req.EnableScheduleTools {
 			if err := p.containerDeps.ScheduleTools.Ensure(ctx, project.ContainerName); err != nil {
 				return nil, "", fmt.Errorf("provision scheduled-task tools: %w", err)
+			}
+		}
+		if req.EnableApprovalGate {
+			if err := p.containerDeps.ApprovalGate.Ensure(ctx, project.ContainerName); err != nil {
+				return nil, "", fmt.Errorf("provision approval gate: %w", err)
 			}
 		}
 		if err := p.containerDeps.Lifecycle.EnsureBootAutostart(ctx, project.ContainerName); err != nil {

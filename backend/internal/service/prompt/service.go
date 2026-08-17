@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	serviceapproval "github.com/futrx-com/remote.futrx.com/internal/service/approval"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
@@ -76,11 +77,29 @@ type ScheduleToolIssuer interface {
 	IssueScheduleTool(context.Context, ScheduleToolRequest) (ScheduleToolAccess, error)
 }
 
+// ApprovalGateIssuer mints per-run capabilities for the container-side
+// approval hook. Implemented by service/approval.
+type ApprovalGateIssuer interface {
+	IssueGrant(
+		ctx context.Context,
+		email string,
+		isAdmin bool,
+		chatID servicechat.ID,
+		projectID serviceproject.ID,
+	) (serviceapproval.GrantAccess, error)
+}
+
 type Option func(*Service)
 
 func WithScheduleToolIssuer(issuer ScheduleToolIssuer) Option {
 	return func(service *Service) {
 		service.scheduleTools = issuer
+	}
+}
+
+func WithApprovalGateIssuer(issuer ApprovalGateIssuer) Option {
+	return func(service *Service) {
+		service.approvalGate = issuer
 	}
 }
 
@@ -91,6 +110,7 @@ type Service struct {
 	hub           *runhub.Hub
 	agents        *agent.Registry
 	scheduleTools ScheduleToolIssuer
+	approvalGate  ApprovalGateIssuer
 }
 
 func New(
@@ -282,6 +302,32 @@ func (rnr *Service) runPromptAs(
 		}
 	}
 
+	// The human-approval gate currently covers Claude Code project runs: its
+	// PreToolUse hook pauses destructive shell commands until the owner decides
+	// in the chat. Enabled whenever the gate issuer is wired so tests and
+	// minimal installs keep running ungated.
+	enableApprovalGate := providerID == agent.ProviderClaude &&
+		meta.ProjectID != "" &&
+		rnr.approvalGate != nil
+	if enableApprovalGate {
+		access, accessErr := rnr.approvalGate.IssueGrant(
+			ctx,
+			input.Actor.Email,
+			input.Actor.IsAdmin,
+			id,
+			serviceproject.ID(meta.ProjectID),
+		)
+		if accessErr != nil {
+			emit(ChatEvent{T: time.Now().UnixMilli(), Type: "error", Message: accessErr.Error()})
+			return accessErr
+		}
+		if runtimeEnv == nil {
+			runtimeEnv = map[string]string{}
+		}
+		runtimeEnv["REMOTE_GATE_API"] = access.APIURL
+		runtimeEnv["REMOTE_GATE_GRANT"] = access.Token
+	}
+
 	run := func(runPrompt, runResumeID string) error {
 		return provider.Run(ctx, agent.RunRequest{
 			Provider:       providerID,
@@ -299,6 +345,7 @@ func (rnr *Service) runPromptAs(
 			},
 			EnableBrowser:       enableBrowser,
 			EnableScheduleTools: enableScheduleTools,
+			EnableApprovalGate:  enableApprovalGate,
 			RuntimeEnv:          runtimeEnv,
 		}, func(ev agent.Event) {
 			rnr.emitAgentEvent(ctx, id, ev, emit)
@@ -331,6 +378,8 @@ func clearSessionIDForProvider(meta *ChatMeta, provider agent.ProviderID) {
 		meta.KimiSessionID = ""
 	case agent.ProviderAntigravity:
 		meta.AntigravitySessionID = ""
+	case agent.ProviderOpenCode:
+		meta.OpenCodeSessionID = ""
 	default:
 		meta.ClaudeSessionID = ""
 	}
@@ -366,6 +415,10 @@ func providerIDFromChatProvider(provider servicechat.Provider) agent.ProviderID 
 		return agent.ProviderKimi
 	case servicechat.ProviderAntigravity:
 		return agent.ProviderAntigravity
+	case servicechat.ProviderOpenCode:
+		return agent.ProviderOpenCode
+	case servicechat.ProviderFreebuff:
+		return agent.ProviderFreebuff
 	default:
 		return agent.ProviderClaude
 	}
@@ -379,6 +432,8 @@ func sessionIDForProvider(meta ChatMeta, provider agent.ProviderID) string {
 		return meta.KimiSessionID
 	case agent.ProviderAntigravity:
 		return meta.AntigravitySessionID
+	case agent.ProviderOpenCode:
+		return meta.OpenCodeSessionID
 	default:
 		return meta.ClaudeSessionID
 	}
@@ -463,7 +518,7 @@ func promptWithSelectedSkills(provider agent.ProviderID, skills []servicechat.Sk
 			triggers = append(triggers, "/"+name)
 		case agent.ProviderCodex:
 			triggers = append(triggers, "$"+name)
-		case agent.ProviderKimi, agent.ProviderAntigravity:
+		case agent.ProviderKimi, agent.ProviderAntigravity, agent.ProviderOpenCode:
 			if name == scheduledTasksSkillName {
 				triggers = append(
 					triggers,
@@ -481,7 +536,7 @@ func promptWithSelectedSkills(provider agent.ProviderID, skills []servicechat.Sk
 		return strings.Join(triggers, "\n") + "\n\n" + prompt
 	case agent.ProviderCodex:
 		return "Use these Codex skills for this request: " + strings.Join(triggers, " ") + "\n\n" + prompt
-	case agent.ProviderKimi, agent.ProviderAntigravity:
+	case agent.ProviderKimi, agent.ProviderAntigravity, agent.ProviderOpenCode:
 		return "Read and follow the selected skill instructions at " +
 			strings.Join(triggers, ", ") + ".\n\n" + prompt
 	default:

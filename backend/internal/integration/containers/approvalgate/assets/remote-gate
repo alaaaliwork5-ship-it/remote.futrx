@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# remote-gate — Claude Code PreToolUse hook.
+#
+# Claude invokes this script before every Bash tool call and passes the tool
+# event as JSON on stdin. The script classifies the command against a compact
+# local danger list; safe commands pass through immediately (exit 0). Commands
+# that look dangerous are sent to the Remote host, which decides with a human
+# in the loop and returns allow/deny. The hook exits 0 to allow and 2 to block
+# (claude honors exit 2 as a hard block regardless of permission mode).
+#
+# Environment (injected per-run by the Remote host):
+#   REMOTE_GATE_API    Approval collection URL, e.g. http://host/agent-api/approvals
+#   REMOTE_GATE_GRANT  Bearer capability grant for the current chat
+set -u
+
+PROGRAM="${0##*/}"
+
+# --- Compact local danger pre-filter ---------------------------------------
+# Mirrors the authoritative policy in the Remote host (approval.Reason). Only
+# commands that match here go to the network; everything else is allowed
+# immediately. `grep -qE` on a single line is fine for the shapes we care about.
+DANGER_PATTERNS='rm[[:space:]]+(-[a-z]*[rf][a-z]*[[:space:]]+)+(/|~|/root|/etc|/usr|/var|/opt|/\*|/\.)'
+DANGER_PATTERNS+='|rm[[:space:]]+(-[a-z]*[rf][a-z]*[[:space:]]+)+\.([[:space:]]|$)'
+DANGER_PATTERNS+='|rm[[:space:]]+(-[a-z]*[rf][a-z]*[[:space:]]+)+/dev/'
+DANGER_PATTERNS+='|(mkfs|mke2fs|wipefs|shred)[[:space:]]|fdisk[[:space:]]+/dev/|parted[[:space:]]+/dev/'
+DANGER_PATTERNS+='|dd[^|;]*of=/dev/(sd|hd|vd|nvme|mmcblk|loop)'
+DANGER_PATTERNS+='|:[[:space:]]*\(\)[[:space:]]*\{'
+DANGER_PATTERNS+='|chmod[[:space:]]+-R[[:space:]]+[0-7]{3,4}[[:space:]]+(/|/root|/etc|/usr|/var|/home)'
+DANGER_PATTERNS+='|chown[[:space:]]+-R[[:space:]]'
+DANGER_PATTERNS+='|(shutdown|reboot|halt|poweroff)([[:space:]]|$)'
+DANGER_PATTERNS+='|(curl|wget)[^|;]*\|[[:space:]]*(sudo[[:space:]]+)?(sh|bash|zsh)'
+DANGER_PATTERNS+='|git[[:space:]]+push[[:space:]]+(-[a-z]*[fF][a-z]*|--force)'
+DANGER_PATTERNS+='|find[[:space:]]+[^|;]*-delete'
+
+die() {
+  printf '%s: %s\n' "$PROGRAM" "$*" >&2
+  exit 2
+}
+
+allow() {
+  exit 0
+}
+
+# --- Read the hook event ---------------------------------------------------
+EVENT="$(cat 2>/dev/null || true)"
+[ -n "$EVENT" ] || allow
+
+TOOL_NAME="$(printf '%s' "$EVENT" | jq -r '.tool_name // ""' 2>/dev/null || true)"
+# Only gate shell execution; other tools (Edit, Write, AskUserQuestion, ...)
+# are not in scope for this approval gate.
+case "$TOOL_NAME" in
+  Bash|bash|shell) ;;
+  *) allow ;;
+esac
+
+COMMAND="$(printf '%s' "$EVENT" | jq -r '.tool_input.cmd // .tool_input.command // .tool_input.shell_command // ""' 2>/dev/null || true)"
+[ -n "$COMMAND" ] || allow
+
+# --- Local pre-filter: safe commands never hit the network -----------------
+if ! printf '%s' "$COMMAND" | grep -qE "$DANGER_PATTERNS"; then
+  allow
+fi
+
+# --- Ask the Remote host ---------------------------------------------------
+API="${REMOTE_GATE_API:-}"
+GRANT="${REMOTE_GATE_GRANT:-}"
+[ -n "$API" ] || { printf '%s: REMOTE_GATE_API is not set; allowing (gate unavailable)\n' "$PROGRAM" >&2; allow; }
+[ -n "$GRANT" ] || { printf '%s: REMOTE_GATE_GRANT is not set; allowing (gate unavailable)\n' "$PROGRAM" >&2; allow; }
+
+BODY="$(printf '{"tool":"%s","command":%s}' "$TOOL_NAME" "$(printf '%s' "$COMMAND" | jq -Rs .)")"
+
+RESPONSE="$(curl -sS --max-time 540 \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${GRANT}" \
+  --data "$BODY" \
+  "$API" 2>&1)"
+CURL_STATUS=$?
+if [ "$CURL_STATUS" -ne 0 ]; then
+  printf '%s: host unreachable (%s); allowing\n' "$PROGRAM" "$RESPONSE" >&2
+  allow
+fi
+
+DECISION="$(printf '%s' "$RESPONSE" | jq -r '.decision // ""' 2>/dev/null || true)"
+REASON="$(printf '%s' "$RESPONSE" | jq -r '.reason // ""' 2>/dev/null || true)"
+
+case "$DECISION" in
+  allow)
+    exit 0
+    ;;
+  deny)
+    printf '%s: blocked by Remote approval policy: %s\n' "$PROGRAM" "$REASON" >&2
+    exit 2
+    ;;
+  *)
+    printf '%s: unexpected host response (%s); allowing\n' "$PROGRAM" "$RESPONSE" >&2
+    allow
+    ;;
+esac

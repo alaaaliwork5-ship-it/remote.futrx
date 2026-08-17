@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
@@ -15,17 +16,30 @@ import (
 // access-control, and response policy.
 type AgentAuthHandler struct {
 	bindings []agentauth.Binding
+	catalog  []service.AgentInfo
 	auth     *serviceauth.Service
 }
 
-func NewAgentAuthHandler(bindings []agentauth.Binding, auth *serviceauth.Service) *AgentAuthHandler {
+func NewAgentAuthHandler(
+	bindings []agentauth.Binding,
+	auth *serviceauth.Service,
+	catalog []service.AgentInfo,
+) *AgentAuthHandler {
 	return &AgentAuthHandler{
 		bindings: append([]agentauth.Binding(nil), bindings...),
+		catalog:  append([]service.AgentInfo(nil), catalog...),
 		auth:     auth,
 	}
 }
 
 func (h *AgentAuthHandler) RegisterRoutes(mux *http.ServeMux) {
+	// Catalog is the dynamic agent list the frontend settings page renders
+	// auth cards from. Like the per-provider status routes it stays open to
+	// every registered user; the outer middleware owns the registration gate.
+	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
+		h.handleCatalog(w, r)
+	})
+
 	for _, binding := range h.bindings {
 		binding := binding
 		prefix := "/api/" + string(binding.ID())
@@ -48,6 +62,10 @@ func (h *AgentAuthHandler) RegisterRoutes(mux *http.ServeMux) {
 			mux.HandleFunc(prefix+"/login/device", func(w http.ResponseWriter, r *http.Request) {
 				h.handleDeviceStart(binding, w, r)
 			})
+		case agentauth.FlowAPIKey:
+			mux.HandleFunc(prefix+"/login/key", func(w http.ResponseWriter, r *http.Request) {
+				h.handleAPIKeySave(binding, w, r)
+			})
 		}
 	}
 }
@@ -56,6 +74,14 @@ func (h *AgentAuthHandler) RegisterRoutes(mux *http.ServeMux) {
 // middleware owns that registration gate when user auth is enabled.
 func (h *AgentAuthHandler) handleStatus(binding agentauth.Binding, w http.ResponseWriter) {
 	httptransport.SendJSON(w, http.StatusOK, binding.Status())
+}
+
+func (h *AgentAuthHandler) handleCatalog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, map[string]any{"agents": h.catalog})
 }
 
 func (h *AgentAuthHandler) handleCodeStart(binding agentauth.Binding, w http.ResponseWriter, r *http.Request) {
@@ -104,6 +130,26 @@ func (h *AgentAuthHandler) handleCodeCancel(binding agentauth.Binding, w http.Re
 	}
 	if err := binding.CancelCode(r.Context()); err != nil {
 		httptransport.SendErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *AgentAuthHandler) handleAPIKeySave(binding agentauth.Binding, w http.ResponseWriter, r *http.Request) {
+	if !h.requireMutationAccess(w, r) {
+		return
+	}
+
+	var body struct {
+		Provider string `json:"provider"`
+		Key      string `json:"key"`
+	}
+	if err := readJSONBody(r, &body); err != nil {
+		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := binding.SaveKey(r.Context(), body.Provider, body.Key); err != nil {
+		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	httptransport.SendJSON(w, http.StatusOK, map[string]bool{"ok": true})

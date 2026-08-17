@@ -9,7 +9,16 @@ export type AssistantMessagePart =
       isError?: boolean;
       status: "running" | "done";
     }
-  | { kind: "thinking"; text: string };
+  | { kind: "thinking"; text: string }
+  | {
+      kind: "approval";
+      approvalId: string;
+      toolName: string;
+      command: string;
+      reason?: string;
+      status: "pending" | "allowed" | "denied";
+      decidedBy?: string;
+    };
 
 export type AssistantMessageBlock = {
   type: "assistant";

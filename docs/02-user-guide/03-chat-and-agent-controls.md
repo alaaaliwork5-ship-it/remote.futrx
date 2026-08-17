@@ -10,8 +10,8 @@ preference for new chats.
 
 Before sending a prompt:
 
-1. Select **Codex**, **Claude**, **Kimi**, or **Antigravity** in the
-   **Provider** toggle.
+1. Select **Codex**, **Claude**, **Kimi**, **Antigravity**, **OpenCode**, or
+   **Freebuff** in the **Provider** toggle.
 2. Open **Model** and choose a provider-supported model or **Auto**.
 3. Optionally open **Skill set**, search the catalog, and select one or more
    skills.
@@ -32,6 +32,13 @@ changed while that chat is streaming.
 | **Claude** | **Auto**, **Fable**, **Opus**, **Sonnet**, **Haiku** | **Thinking**, Claude skills |
 | **Kimi** | **Auto** | No current thinking or speed selector |
 | **Antigravity** | **Auto** | **Thinking** at Auto, Low, Medium, or High |
+| **OpenCode** | **Auto**, **Claude Opus 4.5**, **Claude Sonnet 4.5**, **Claude Haiku 4.5**, **GPT-5.4**, **GPT-5.4 Mini** | **Thinking**, OpenCode skills, browser MCP |
+| **Freebuff** | **Auto** | No thinking or speed selector; interactive TUI only |
+
+OpenCode **Model** choices are `provider/model` IDs routed through the CLI:
+Anthropic entries use the **ANTHROPIC_API_KEY** project secret and OpenAI
+entries use **OPENAI_API_KEY**. The workspace's own `opencode.json` can still
+override the model or add more.
 
 **Auto** omits an explicit model so the provider chooses its configured
 default. Model availability and account entitlements are ultimately enforced
@@ -53,6 +60,11 @@ provider.
 - Claude: **Auto**, **Low**, **Medium**, **High**, **XHigh**, **Max**, and
   **Ultra**.
 - Antigravity: **Auto**, **Low**, **Medium**, and **High**.
+- OpenCode: **Auto**, **None**, **Low**, **Medium**, **High**, **XHigh**, and
+  **Max**. Remote passes the selection as opencode's `--variant`
+  (provider-specific reasoning effort); an effort the chosen model doesn't
+  advertise is silently ignored by opencode, so unsupported pairs fall back
+  to the model default instead of erroring.
 - Kimi: no current selector.
 
 **Auto** omits the explicit effort flag. The provider or model then chooses its
@@ -83,8 +95,13 @@ account. Remote does not guarantee that every model accepts every tier.
 Modes are prompt policy, not a security or permission boundary. They do not
 technically prevent an agent from running commands or editing files. Project
 agents run as root inside their unprivileged container, and the provider CLIs
-are launched in approval-free modes. Review proposed actions and use project
-isolation, Git, resource limits, and backups as the real control layers.
+are launched in approval-free modes. For Claude Code project runs, the
+approval gate pauses destructive shell commands (recursive deletes of
+filesystem roots, `mkfs`/`dd` on block devices, fork bombs, `curl|sh`, and
+similar) and shows an **Approve and run** / **Deny** card in the chat before
+they execute; a timeout or canceled run denies by default. Codex, Kimi, and
+OpenCode runs are not gated yet. Review proposed actions and use project
+isolation, Git, resource limits, and backups as the other control layers.
 
 Changing **Mode** while a run is already active affects a later prompt, not the
 provider process that is currently producing output.
@@ -112,8 +129,15 @@ Current provider caveats:
 - Antigravity has the same general selected-skill limitation as Kimi. The
   built-in **Scheduled Tasks** skill is the exception: Remote passes its
   project skill path explicitly so Antigravity can use it.
-- The browser skill prepares per-run browser MCP access for Claude and Codex,
-  not Kimi or Antigravity.
+- OpenCode follows the same selected-skill pattern as Kimi/Antigravity, with
+  the same **Scheduled Tasks** exception. Its model, provider, and MCP
+  configuration live in the workspace's `opencode.json`.
+- Freebuff is interactive-only: selected skills are displayed but cannot be
+  injected into its TUI session.
+- The browser skill prepares browser MCP access for Claude, Codex, and
+  OpenCode: Claude and Codex receive per-run flags, and OpenCode gets the
+  `browser` MCP server written into its global config in the container.
+  Kimi and Antigravity do not get MCP browser tools.
 
 These generated triggers are an internal integration detail. The composer does
 not currently implement general-purpose user `@` mentions or slash commands.

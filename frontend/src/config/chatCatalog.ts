@@ -12,6 +12,8 @@ export const CHAT_PROVIDER_OPTIONS = [
   { value: "claude", label: "Claude", validInUserSettings: true },
   { value: "kimi", label: "Kimi", validInUserSettings: false },
   { value: "antigravity", label: "Antigravity", validInUserSettings: false },
+  { value: "opencode", label: "OpenCode", validInUserSettings: true },
+  { value: "freebuff", label: "Freebuff", validInUserSettings: false },
 ] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_OPTIONS)[number]["value"];
@@ -30,15 +32,19 @@ export type ChatMode = (typeof CHAT_MODE_OPTIONS)[number]["value"];
 // Reasoning-effort ladders differ per CLI (verified against each provider's
 // --help / config validation). "Auto" ("") omits the flag so the CLI/server
 // picks its own default.
+//
+// OpenCode forwards the selection as --variant (provider-specific reasoning
+// effort) and silently ignores efforts the chosen model doesn't advertise, so
+// the ladder spans both the OpenAI (none/xhigh) and Anthropic (max) families.
 export const REASONING_EFFORT_OPTIONS = [
-  { value: "", label: "Auto", providers: ["claude", "codex", "antigravity"] },
-  { value: "none", label: "None", providers: ["codex"] },
+  { value: "", label: "Auto", providers: ["claude", "codex", "antigravity", "opencode"] },
+  { value: "none", label: "None", providers: ["codex", "opencode"] },
   { value: "minimal", label: "Minimal", providers: ["codex"] },
-  { value: "low", label: "Low", providers: ["claude", "codex", "antigravity"] },
-  { value: "medium", label: "Medium", providers: ["claude", "codex", "antigravity"] },
-  { value: "high", label: "High", providers: ["claude", "codex", "antigravity"] },
-  { value: "xhigh", label: "XHigh", providers: ["claude", "codex"] },
-  { value: "max", label: "Max", providers: ["claude", "codex"] },
+  { value: "low", label: "Low", providers: ["claude", "codex", "antigravity", "opencode"] },
+  { value: "medium", label: "Medium", providers: ["claude", "codex", "antigravity", "opencode"] },
+  { value: "high", label: "High", providers: ["claude", "codex", "antigravity", "opencode"] },
+  { value: "xhigh", label: "XHigh", providers: ["claude", "codex", "opencode"] },
+  { value: "max", label: "Max", providers: ["claude", "codex", "opencode"] },
   { value: "ultra", label: "Ultra", providers: ["claude", "codex"] },
 ] as const;
 
@@ -75,12 +81,27 @@ const MODEL_OPTIONS_BY_PROVIDER = {
   // agy picks its own Gemini engine; the CLI accepts --model but publishes no
   // stable headless id list, so Auto is the only safe catalog entry.
   antigravity: [{ value: "", label: "Auto", sub: "antigravity default" }],
+  // opencode routes provider/model IDs straight to the matching provider
+  // (verified against the models.dev catalog it fetches). Anthropic models use
+  // the ANTHROPIC_API_KEY project secret; OpenAI models use OPENAI_API_KEY.
+  opencode: [
+    { value: "", label: "Auto", sub: "opencode default" },
+    { value: "anthropic/claude-opus-4-5", label: "Claude Opus 4.5", sub: "anthropic deep reasoning" },
+    { value: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet 4.5", sub: "anthropic balanced" },
+    { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", sub: "anthropic fast" },
+    { value: "openai/gpt-5.4", label: "GPT-5.4", sub: "openai strong coding" },
+    { value: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini", sub: "openai fast" },
+  ],
+  // freebuff is interactive-only; the model is chosen inside its TUI.
+  freebuff: [{ value: "", label: "Auto", sub: "freebuff default" }],
 } as const satisfies Record<ChatProvider, readonly ModelOption[]>;
 
 export function modelOptionsForProvider(provider?: ChatProvider): readonly ModelOption[] {
   if (provider === "codex") return MODEL_OPTIONS_BY_PROVIDER.codex;
   if (provider === "kimi") return MODEL_OPTIONS_BY_PROVIDER.kimi;
   if (provider === "antigravity") return MODEL_OPTIONS_BY_PROVIDER.antigravity;
+  if (provider === "opencode") return MODEL_OPTIONS_BY_PROVIDER.opencode;
+  if (provider === "freebuff") return MODEL_OPTIONS_BY_PROVIDER.freebuff;
   return MODEL_OPTIONS_BY_PROVIDER.claude;
 }
 
@@ -112,11 +133,19 @@ export function modelDisplayLabel(model?: string, provider?: ChatProvider): stri
     const match = MODEL_OPTIONS_BY_PROVIDER.codex.find((option) => option.value === model);
     return match?.label ?? model;
   }
+  if (provider === "opencode") {
+    const match = MODEL_OPTIONS_BY_PROVIDER.opencode.find((option) => option.value === model);
+    return match?.label ?? model;
+  }
   return matchingClaudeModel(model)?.label ?? model;
 }
 
 export function modelShortLabel(model?: string): string {
   if (!model) return "auto";
+  // opencode model IDs are provider/model pairs (e.g. openai/gpt-5.4); the
+  // sidebar shows the model part only.
+  const openCode = MODEL_OPTIONS_BY_PROVIDER.opencode.find((option) => option.value === model);
+  if (openCode) return openCode.value.split("/").pop() ?? openCode.value;
   return matchingClaudeModel(model)?.value ?? model;
 }
 

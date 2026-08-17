@@ -86,9 +86,10 @@ func TestNewRejectsPartialAgentContainerDependencies(t *testing.T) {
 
 func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
 	// antigravity's CLI owns its auth (OS keyring / per-home token fallback
-	// with no stable token path), so it is the one profile allowed to ship
-	// without a credential sync policy — sign-in happens in the chat terminal.
-	credentialExempt := map[string]bool{"antigravity": true}
+	// with no stable token path), so it is allowed to ship without a credential
+	// sync policy — sign-in happens in the chat terminal. Freebuff needs no
+	// credentials at all (free, ad-supported), so it is exempt the same way.
+	credentialExempt := map[string]bool{"antigravity": true, "freebuff": true}
 
 	profiles := AgentProfiles()
 	ids := make([]string, 0, len(profiles))
@@ -108,7 +109,7 @@ func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
 			t.Fatalf("profile %q has no credential policy", profile.ID)
 		}
 	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
+	if want := []string{"claude", "codex", "kimi", "antigravity", "opencode", "freebuff"}; !slices.Equal(ids, want) {
 		t.Fatalf("profile IDs = %v, want %v", ids, want)
 	}
 }
@@ -120,7 +121,11 @@ func TestAgentAuthBindingsComeFromRegistrationCatalog(t *testing.T) {
 	// antigravity deliberately registers a service-less binding: agy's bare
 	// TUI sign-in cannot run under the shared code/device auth services, so
 	// in-app auth reports unavailable and sign-in happens in the terminal.
-	availabilityExempt := map[agent.ProviderID]bool{agent.ProviderAntigravity: true}
+	// Freebuff is the same: interactive-only CLI with no host auth flow.
+	availabilityExempt := map[agent.ProviderID]bool{
+		agent.ProviderAntigravity: true,
+		agent.ProviderFreebuff:    true,
+	}
 
 	for _, definition := range definitions {
 		binding := definition.authBinding()
@@ -136,8 +141,52 @@ func TestAgentAuthBindingsComeFromRegistrationCatalog(t *testing.T) {
 		}
 		ids = append(ids, string(binding.ID()))
 	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
+	if want := []string{"claude", "codex", "kimi", "antigravity", "opencode", "freebuff"}; !slices.Equal(ids, want) {
 		t.Fatalf("auth binding IDs = %v, want %v", ids, want)
+	}
+}
+
+func TestAgentCatalogDescribesRegistration(t *testing.T) {
+	definitions := agentDefinitions()
+	registry := agentauth.NewRegistry()
+	for _, definition := range definitions {
+		if err := registry.Register(definition.authBinding()); err != nil {
+			t.Fatalf("register auth binding: %v", err)
+		}
+	}
+
+	catalog := DescribeAgentCatalog(definitions, registry.Bindings())
+	want := []struct {
+		id         string
+		name       string
+		authMethod string
+	}{
+		{id: "claude", name: "Claude", authMethod: "code"},
+		{id: "codex", name: "Codex", authMethod: "device"},
+		{id: "kimi", name: "Kimi", authMethod: "device"},
+		{id: "antigravity", name: "Antigravity", authMethod: "terminal"},
+		{id: "opencode", name: "OpenCode", authMethod: "apikey"},
+		{id: "freebuff", name: "Freebuff", authMethod: "terminal"},
+	}
+	if len(catalog) != len(want) {
+		t.Fatalf("catalog has %d agents, want %d", len(catalog), len(want))
+	}
+	for index, entry := range want {
+		agent := catalog[index]
+		if agent.ID != entry.id || agent.Name != entry.name || agent.AuthMethod != entry.authMethod {
+			t.Fatalf("catalog[%d] = %s/%s/%s, want %s/%s/%s",
+				index, agent.ID, agent.Name, agent.AuthMethod,
+				entry.id, entry.name, entry.authMethod)
+		}
+		if agent.Description == "" {
+			t.Fatalf("catalog[%d] %q has no description", index, agent.ID)
+		}
+		// Only host-auth agents are available; terminal agents must report
+		// unavailable so the frontend renders an info card, not a login form.
+		if (agent.AuthMethod == "terminal") == agent.AuthAvailable {
+			t.Fatalf("catalog[%d] %q authMethod %q with authAvailable %v is inconsistent",
+				index, agent.ID, agent.AuthMethod, agent.AuthAvailable)
+		}
 	}
 }
 

@@ -1,4 +1,5 @@
 import { AppShell } from "../../ui/layout/AppShell";
+import { NewProjectDialog } from "../../ui/NewProjectDialog";
 import { NoChatSelected } from "../../ui/layout/NoChatSelected";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
@@ -41,6 +42,7 @@ export function WorkspaceContainer() {
           onHamburger={workspace.openSidebar}
         />
       )}
+      <NewProjectDialog />
     </AppShell>
   );
 }

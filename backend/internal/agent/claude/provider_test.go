@@ -197,7 +197,7 @@ func TestBuildCmdRejectsPartialContainerDependencies(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected partial container dependencies to fail")
 	}
-	const want = "incomplete container dependencies: missing credentials, workspace, browser, schedule tools, lifecycle"
+	const want = "incomplete container dependencies: missing credentials, workspace, browser, schedule tools, approval gate, lifecycle"
 	if err.Error() != want {
 		t.Fatalf("buildCmd error = %q, want %q", err, want)
 	}
@@ -267,6 +267,10 @@ type fakeClaudeScheduleTools struct{}
 
 func (fakeClaudeScheduleTools) Ensure(context.Context, string) error { return nil }
 
+type fakeClaudeApprovalGate struct{}
+
+func (fakeClaudeApprovalGate) Ensure(context.Context, string) error { return nil }
+
 func claudeContainerDependencies(browser provisioning.BrowserProvisioner) provisioning.ContainerDependencies {
 	return provisioning.ContainerDependencies{
 		CLI:           fakeClaudeCLI{},
@@ -274,6 +278,7 @@ func claudeContainerDependencies(browser provisioning.BrowserProvisioner) provis
 		Workspace:     fakeClaudeWorkspace{},
 		Browser:       browser,
 		ScheduleTools: fakeClaudeScheduleTools{},
+		ApprovalGate:  fakeClaudeApprovalGate{},
 		Lifecycle:     fakeClaudeLifecycle{},
 	}
 }

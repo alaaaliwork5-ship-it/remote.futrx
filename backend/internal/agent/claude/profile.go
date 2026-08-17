@@ -12,6 +12,10 @@ const (
 	browserMCPConfigPath = "/workspace/.browser-gui/mcp-claude.json"
 	browserMCPConfigHash = "/workspace/.browser-gui/.mcp-claude.sha256"
 	browserGUIDir        = "/workspace/.browser-gui"
+	// approvalSettingsPath must match approvalgate.ContainerClaudeSettings:
+	// the approval gate publishes its claude settings there and every gated
+	// run points claude at it via --settings.
+	approvalSettingsPath = "/workspace/scripts/remote-claude-settings.json"
 )
 
 //go:embed assets/mcp.json

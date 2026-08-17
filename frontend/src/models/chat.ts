@@ -20,6 +20,7 @@ export interface ChatMeta {
   codexSessionId?: string;
   kimiSessionId?: string;
   antigravitySessionId?: string;
+  openCodeSessionId?: string;
   tmuxSession?: string;
   cwd?: string;
   createdAt: number;
@@ -49,9 +50,18 @@ export type ChatEvent = ChatEventBase & (
   | { type: "thinking"; text: string }
   | { type: "tool_use_start"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_use_end"; id: string; output?: string; isError?: boolean }
-  | { type: "permission_request"; id: string; toolName: string; input: Record<string, unknown> }
+  | {
+      type: "permission_request";
+      id: string;
+      toolName: string;
+      input: Record<string, unknown>;
+      reason?: string;
+      decision?: "allow" | "deny";
+      decidedBy?: string;
+      data?: Record<string, unknown>;
+    }
   | { type: "system"; subtype: string; data?: Record<string, unknown> }
-  | { type: "session"; provider?: ChatProvider; claudeSessionId?: string; codexSessionId?: string; kimiSessionId?: string; antigravitySessionId?: string }
+  | { type: "session"; provider?: ChatProvider; claudeSessionId?: string; codexSessionId?: string; kimiSessionId?: string; antigravitySessionId?: string; openCodeSessionId?: string }
   | {
       type: "complete";
       usage?: {

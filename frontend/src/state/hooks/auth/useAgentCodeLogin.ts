@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { ClaudeLoginPhase } from "../../../models/auth";
-import { claudeAuthApi } from "../../../api/agents/auth/claudeAuthApi";
+import { agentAuthApi } from "../../../api/agents/auth/agentAuthApi";
 
-export function useClaudeLoginFlow(onDone: () => void) {
+// Generic authorization-code login flow (the Claude pattern): the CLI emits an
+// OAuth URL and expects a code pasted back. Driven entirely by the agent
+// catalog id so any code-flow provider reuses it.
+export function useAgentCodeLogin(agentId: string, onDone: () => void) {
   const [phase, setPhaseState] = useState<ClaudeLoginPhase>("idle");
   const [authUrl, setAuthUrl] = useState("");
   const [code, setCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const phaseRef = useRef<ClaudeLoginPhase>("idle");
+  const api = agentAuthApi(agentId);
 
   function setPhase(next: ClaudeLoginPhase) {
     phaseRef.current = next;
@@ -17,16 +21,16 @@ export function useClaudeLoginFlow(onDone: () => void) {
   useEffect(() => {
     return () => {
       if (phaseRef.current === "starting" || phaseRef.current === "awaiting-code") {
-        claudeAuthApi.cancelLogin().catch(() => {});
+        api.cancelLogin().catch(() => {});
       }
     };
-  }, []);
+  }, [api]);
 
   async function startLogin() {
     setPhase("starting");
     setErrorMessage("");
     try {
-      const response = await claudeAuthApi.startLogin();
+      const response = await api.startLogin();
       setAuthUrl(response.url);
       setPhase("awaiting-code");
     } catch (error) {
@@ -41,7 +45,7 @@ export function useClaudeLoginFlow(onDone: () => void) {
     setPhase("submitting");
     setErrorMessage("");
     try {
-      await claudeAuthApi.submitCode(trimmed);
+      await api.submitCode(trimmed);
       setPhase("done");
       setTimeout(onDone, 700);
     } catch (error) {
@@ -52,7 +56,7 @@ export function useClaudeLoginFlow(onDone: () => void) {
 
   async function cancel() {
     try {
-      await claudeAuthApi.cancelLogin();
+      await api.cancelLogin();
     } catch {}
     reset();
   }

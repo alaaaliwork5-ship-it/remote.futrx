@@ -1,6 +1,7 @@
 package httphandlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 )
 
@@ -21,6 +23,10 @@ var (
 type agentAuthDeviceStatus struct {
 	Authenticated bool                  `json:"authenticated"`
 	DeviceLogin   agentauth.DeviceState `json:"deviceLogin,omitempty"`
+}
+
+type agentAuthAPIKeyStatus struct {
+	Authenticated bool `json:"authenticated"`
 }
 
 func TestAgentAuthStatusRoutesPreserveProviderPayloads(t *testing.T) {
@@ -64,6 +70,7 @@ func TestAgentAuthMutationRoutesRemainPostOnly(t *testing.T) {
 		"/api/claude/login/cancel",
 		"/api/codex/login/device",
 		"/api/kimi/login/device",
+		"/api/opencode/login/key",
 	}
 	for _, path := range paths {
 		t.Run(path, func(t *testing.T) {
@@ -121,6 +128,60 @@ func TestAgentAuthCodeErrorsKeepTheirHTTPMapping(t *testing.T) {
 	}
 }
 
+func TestAgentAuthCatalogRouteListsBindingsWithAuthMethods(t *testing.T) {
+	handler := newTestAgentAuthHandler()
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/agents", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/agents status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var body struct {
+		Agents []service.AgentInfo `json:"agents"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if len(body.Agents) != 4 {
+		t.Fatalf("catalog has %d agents, want 4", len(body.Agents))
+	}
+
+	want := []struct {
+		id         string
+		authMethod string
+	}{
+		{id: "claude", authMethod: "code"},
+		{id: "codex", authMethod: "device"},
+		{id: "kimi", authMethod: "device"},
+		{id: "opencode", authMethod: "apikey"},
+	}
+	for index, entry := range want {
+		agent := body.Agents[index]
+		if agent.ID != entry.id || agent.AuthMethod != entry.authMethod {
+			t.Fatalf("catalog[%d] = %s/%s, want %s/%s",
+				index, agent.ID, agent.AuthMethod, entry.id, entry.authMethod)
+		}
+		if agent.Name == "" || agent.Description == "" {
+			t.Fatalf("catalog[%d] %q missing display metadata", index, agent.ID)
+		}
+	}
+}
+
+func TestAgentAuthCatalogRouteRejectsNonGet(t *testing.T) {
+	handler := newTestAgentAuthHandler()
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/agents", nil))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST /api/agents status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
 func TestAgentAuthOperationalErrorsAndCancelShape(t *testing.T) {
 	handler := newTestAgentAuthHandler()
 	mux := http.NewServeMux()
@@ -164,6 +225,66 @@ func TestAgentAuthOperationalErrorsAndCancelShape(t *testing.T) {
 	}
 }
 
+func TestAgentAuthAPIKeySaveRoute(t *testing.T) {
+	handler := newTestAgentAuthHandler()
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	// Save captures into the shared APIKeyService so the status route reflects
+	// the new credential.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(
+		http.MethodPost,
+		"/api/opencode/login/key",
+		strings.NewReader(`{"provider":"anthropic","key":"sk-ant-test"}`),
+	))
+	if rec.Code != http.StatusOK || rec.Body.String() != `{"ok":true}`+"\n" {
+		t.Fatalf("save response = %d %q, want 200 ok", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/opencode/auth-status", nil))
+	if rec.Code != http.StatusOK || rec.Body.String() != `{"authenticated":true}`+"\n" {
+		t.Fatalf("status after save = %d %q, want authenticated", rec.Code, rec.Body.String())
+	}
+
+	tests := []struct {
+		name string
+		body string
+		want int
+		text string
+	}{
+		{
+			name: "rejects blank key",
+			body: `{"provider":"anthropic","key":"  "}`,
+			want: http.StatusBadRequest,
+			text: `{"error":"API key is required"}` + "\n",
+		},
+		{
+			name: "rejects blank provider",
+			body: `{"provider":" ","key":"sk-ant-test"}`,
+			want: http.StatusBadRequest,
+			text: `{"error":"provider is required"}` + "\n",
+		},
+		{
+			name: "rejects malformed json",
+			body: `{`,
+			want: http.StatusBadRequest,
+			text: `{"error":"invalid json: unexpected EOF"}` + "\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/opencode/login/key", strings.NewReader(test.body)))
+			if rec.Code != test.want || rec.Body.String() != test.text {
+				t.Fatalf("response = %d %q, want %d %q", rec.Code, rec.Body.String(), test.want, test.text)
+			}
+		})
+	}
+}
+
 func newTestAgentAuthHandler() *AgentAuthHandler {
 	code := agentauth.NewCodeService(agentauth.CodeConfig{
 		Command:       missingAgentCLI,
@@ -184,9 +305,28 @@ func newTestAgentAuthHandler() *AgentAuthHandler {
 		})
 	}
 
-	return NewAgentAuthHandler([]agentauth.Binding{
+	var savedProvider string
+	apiKey := agentauth.NewAPIKeyService(agentauth.APIKeyConfig[agentAuthAPIKeyStatus]{
+		Save: func(provider, _ string) error {
+			savedProvider = provider
+			return nil
+		},
+		Authenticated: func() bool { return savedProvider != "" },
+		BuildStatus: func() agentAuthAPIKeyStatus {
+			return agentAuthAPIKeyStatus{Authenticated: savedProvider != ""}
+		},
+	})
+
+	bindings := []agentauth.Binding{
 		agentauth.NewCodeBinding(agent.ProviderClaude, code),
 		agentauth.NewDeviceBinding(agent.ProviderCodex, device("codex CLI not found on PATH - install it first")),
 		agentauth.NewDeviceBinding(agent.ProviderKimi, device("kimi CLI not found on PATH - install it first")),
-	}, nil)
+		agentauth.NewAPIKeyBinding(agent.ProviderOpenCode, apiKey),
+	}
+	return NewAgentAuthHandler(bindings, nil, []service.AgentInfo{
+		{ID: "claude", Name: "Claude", Description: "Anthropic's Claude Code", AuthMethod: "code", AuthAvailable: true},
+		{ID: "codex", Name: "Codex", Description: "OpenAI's Codex CLI", AuthMethod: "device", AuthAvailable: true},
+		{ID: "kimi", Name: "Kimi", Description: "Moonshot's Kimi Code", AuthMethod: "device", AuthAvailable: true},
+		{ID: "opencode", Name: "OpenCode", Description: "Open-source coding agent", AuthMethod: "apikey", AuthAvailable: true},
+	})
 }

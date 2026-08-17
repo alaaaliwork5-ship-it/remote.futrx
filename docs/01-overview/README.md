@@ -53,7 +53,7 @@ flowchart TD
     Identity --> Users["Invited Google users"]
     Identity --> Sharing["Per-project membership"]
 
-    Workspace --> Providers["Claude, Codex, Kimi, Antigravity"]
+    Workspace --> Providers["Claude, Codex, Kimi, Antigravity, OpenCode, Freebuff"]
     Workspace --> Chat["Streaming chats"]
     Workspace --> Skills["Reusable skills"]
     Workspace --> Schedules["One-time and recurring tasks"]

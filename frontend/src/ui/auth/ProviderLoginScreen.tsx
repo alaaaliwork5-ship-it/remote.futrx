@@ -1,11 +1,9 @@
-import { useAuthContext } from "../../state/context/AuthContext";
-import { ClaudeAuthSettings } from "../settings/ClaudeAuthSettings";
-import { CodexAuthSettings } from "../settings/CodexAuthSettings";
-import { KimiAuthSettings } from "../settings/KimiAuthSettings";
-import { Key } from "../primitives/icons";
+import { useAgentCatalog } from "../../state/hooks/agents/useAgentCatalog";
+import { AgentAuthCard } from "../settings/AgentAuthCard";
+import { Key, Loader } from "../primitives/icons";
 
 export function ProviderLoginScreen() {
-  const { codexAuth, kimiAuth } = useAuthContext();
+  const { agents, loading } = useAgentCatalog(true);
 
   return (
     <div class="app-shell overflow-y-auto bg-[#090b0f] text-ink-100 p-5">
@@ -23,24 +21,15 @@ export function ProviderLoginScreen() {
         </div>
 
         <div class="space-y-3">
-          <ClaudeAuthSettings />
-          <CodexAuthSettings
-            authenticated={codexAuth.authenticated}
-            usesApiKey={codexAuth.usesApiKey}
-            deviceLogin={codexAuth.deviceLogin}
-            loading={codexAuth.loading}
-            starting={codexAuth.starting}
-            error={codexAuth.error}
-            onStartDeviceLogin={codexAuth.startDeviceLogin}
-          />
-          <KimiAuthSettings
-            authenticated={kimiAuth.authenticated}
-            deviceLogin={kimiAuth.deviceLogin}
-            loading={kimiAuth.loading}
-            starting={kimiAuth.starting}
-            error={kimiAuth.error}
-            onStartDeviceLogin={kimiAuth.startDeviceLogin}
-          />
+          {loading ? (
+            <div class="flex justify-center py-6">
+              <Loader class="w-5 h-5 text-ink-300 animate-spin" />
+            </div>
+          ) : (
+            (agents ?? []).map((agent) => (
+              <AgentAuthCard key={agent.id} agent={agent} />
+            ))
+          )}
         </div>
       </div>
     </div>

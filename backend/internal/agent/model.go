@@ -16,6 +16,8 @@ const (
 	ProviderCodex       ProviderID = "codex"
 	ProviderKimi        ProviderID = "kimi"
 	ProviderAntigravity ProviderID = "antigravity"
+	ProviderOpenCode    ProviderID = "opencode"
+	ProviderFreebuff    ProviderID = "freebuff"
 )
 
 type EventType string
@@ -72,6 +74,9 @@ type RunRequest struct {
 	// EnableScheduleTools ensures the provider-neutral remote-schedule CLI and
 	// its skill are present for this run.
 	EnableScheduleTools bool
+	// EnableApprovalGate wires the human-approval gate (Claude PreToolUse hook)
+	// into this run so destructive shell commands pause for chat approval.
+	EnableApprovalGate bool
 	// RuntimeEnv carries short-lived, backend-issued capabilities into a run.
 	// Provider adapters must not persist these values in project configuration.
 	RuntimeEnv map[string]string

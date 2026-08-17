@@ -5,12 +5,14 @@ import { useAuth, type AuthState } from "../hooks/auth/useAuth";
 import { useClaudeAuth, type ClaudeAuthState } from "../hooks/auth/useClaudeAuth";
 import { useCodexAuth, type CodexAuthState } from "../hooks/auth/useCodexAuth";
 import { useKimiAuth, type KimiAuthState } from "../hooks/auth/useKimiAuth";
+import { useOpenCodeAuth, type OpenCodeAuthState } from "../hooks/auth/useOpenCodeAuth";
 
 interface AuthContextValue {
   auth: AuthState;
   claudeAuth: ClaudeAuthState;
   codexAuth: CodexAuthState;
   kimiAuth: KimiAuthState;
+  opencodeAuth: OpenCodeAuthState;
   appAuthOk: boolean;
   providerAuthChecked: boolean;
   providerAuthenticated: boolean;
@@ -27,9 +29,14 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   const claudeAuth = useClaudeAuth(providerAuthEnabled);
   const codexAuth = useCodexAuth(providerAuthEnabled);
   const kimiAuth = useKimiAuth(providerAuthEnabled);
-  const providerAuthChecked = claudeAuth.checked && codexAuth.checked && kimiAuth.checked;
+  const opencodeAuth = useOpenCodeAuth(providerAuthEnabled);
+  const providerAuthChecked =
+    claudeAuth.checked && codexAuth.checked && kimiAuth.checked && opencodeAuth.checked;
   const providerAuthenticated =
-    claudeAuth.authenticated || codexAuth.authenticated || kimiAuth.authenticated;
+    claudeAuth.authenticated ||
+    codexAuth.authenticated ||
+    kimiAuth.authenticated ||
+    opencodeAuth.authenticated;
   const gateOpen = providerAuthEnabled && providerAuthChecked && providerAuthenticated;
 
   return (
@@ -39,6 +46,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
         claudeAuth,
         codexAuth,
         kimiAuth,
+        opencodeAuth,
         appAuthOk,
         providerAuthChecked,
         providerAuthenticated,

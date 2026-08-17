@@ -43,7 +43,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 	var middleware httptransport.Middleware
 	if deps.Services.Auth != nil {
 		auth = httphandlers.NewAuthHandler(deps.Services.Auth, deps.Services.Access)
-		providerAuthPrefixes := make([]string, 0, len(agentAuthBindings)*2)
+		providerAuthPrefixes := make([]string, 0, len(agentAuthBindings)*2+1)
+		// The agent catalog is read-only metadata used by the provider
+		// onboarding screen, so it stays reachable before any provider login.
+		providerAuthPrefixes = append(providerAuthPrefixes, "/api/agents")
 		for _, binding := range agentAuthBindings {
 			provider := string(binding.ID())
 			providerAuthPrefixes = append(
@@ -91,6 +94,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.GitHistory,
 		deps.IDE,
 	).WithSchedules(scheduleHandler)
+	approvalHandler := httphandlers.NewApprovalHandler(deps.Services.Approvals, gate)
 
 	return httptransport.NewHandler(httptransport.Handlers{
 		Sessions: httphandlers.NewTmuxHandler(deps.Services.Tmux),
@@ -105,6 +109,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,
 			deps.Services.Auth,
+			deps.Services.AgentCatalog,
 		),
 		UserSettings: httphandlers.NewUserSettingsHandler(
 			deps.Services.UserSettings,
@@ -115,6 +120,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Skills:           httphandlers.NewSkillHandler(deps.Services.Skills),
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
+		Approvals:        approvalHandler,
 		Uploads:          uploads,
 		TmuxWS:           wstransport.NewTmuxSocket(deps.TmuxClient),
 		TerminalWS:       terminalSocket,

@@ -12,6 +12,9 @@
 /data/
 /.qa.env
 
+# Docker deployment runtime data (admin creds, sessions, chats)
+/.docker-data/
+
 # OS / editor noise
 .DS_Store
 *.swp

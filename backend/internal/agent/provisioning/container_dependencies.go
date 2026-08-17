@@ -39,6 +39,12 @@ type ScheduleToolsProvisioner interface {
 	Ensure(context.Context, string) error
 }
 
+// ApprovalGateProvisioner publishes the human-approval gate (Claude hook and
+// settings) into a project workspace.
+type ApprovalGateProvisioner interface {
+	Ensure(context.Context, string) error
+}
+
 // ContainerLifecycle owns lifecycle settings needed by agent runs.
 type ContainerLifecycle interface {
 	EnsureBootAutostart(context.Context, string) error
@@ -52,6 +58,7 @@ type ContainerDependencies struct {
 	Workspace     WorkspaceProvisioner
 	Browser       BrowserProvisioner
 	ScheduleTools ScheduleToolsProvisioner
+	ApprovalGate  ApprovalGateProvisioner
 	Lifecycle     ContainerLifecycle
 }
 
@@ -62,6 +69,7 @@ func (d ContainerDependencies) IsZero() bool {
 		d.Workspace == nil &&
 		d.Browser == nil &&
 		d.ScheduleTools == nil &&
+		d.ApprovalGate == nil &&
 		d.Lifecycle == nil
 }
 
@@ -73,7 +81,7 @@ func (d ContainerDependencies) Validate() error {
 		return nil
 	}
 
-	missing := make([]string, 0, 6)
+	missing := make([]string, 0, 7)
 	if d.CLI == nil {
 		missing = append(missing, "CLI")
 	}
@@ -88,6 +96,9 @@ func (d ContainerDependencies) Validate() error {
 	}
 	if d.ScheduleTools == nil {
 		missing = append(missing, "schedule tools")
+	}
+	if d.ApprovalGate == nil {
+		missing = append(missing, "approval gate")
 	}
 	if d.Lifecycle == nil {
 		missing = append(missing, "lifecycle")

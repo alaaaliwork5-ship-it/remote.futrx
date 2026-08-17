@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
-import { useContext, useEffect, useReducer } from "preact/hooks";
+import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import type { ChatMeta, CreateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import { chatApi } from "../../api/chatApi";
@@ -24,6 +24,9 @@ interface WorkspaceContextValue {
   showChat: () => void;
   showSettings: () => void;
   showProjectContainers: (projectId: string | null) => void;
+  newProjectDialogOpen: boolean;
+  openNewProjectDialog: () => void;
+  closeNewProjectDialog: () => void;
   createProject: (name: string) => Promise<ProjectMeta>;
   createChat: (projectId?: string) => Promise<ChatMeta>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -46,6 +49,7 @@ export function WorkspaceProvider({
   const data = useWorkspaceData(enabled);
   const { settings } = useUserSettingsContext();
   const [ui, dispatch] = useReducer(workspaceUiState.reduce, workspaceUiState.createInitial());
+  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const activeChat = workspaceSidebarState.activeChat(data.chats, ui.activeChatId);
 
   useEffect(() => {
@@ -118,6 +122,9 @@ export function WorkspaceProvider({
         showSettings: () => dispatch({ type: "show-settings" }),
         showProjectContainers: (projectId) =>
           dispatch({ type: "show-project-containers", projectId }),
+        newProjectDialogOpen,
+        openNewProjectDialog: () => setNewProjectDialogOpen(true),
+        closeNewProjectDialog: () => setNewProjectDialogOpen(false),
         createProject,
         createChat,
         deleteChat,

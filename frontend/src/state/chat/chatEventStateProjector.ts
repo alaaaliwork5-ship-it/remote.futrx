@@ -8,6 +8,8 @@ import type { ChatUsageTotals } from "../../models/chatUsage";
 
 type AssistantToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
+type ApprovalEvent = Extract<ChatEvent, { type: "permission_request" }>;
+
 type Usage =
   | {
       input_tokens?: number;
@@ -16,6 +18,13 @@ type Usage =
       cache_creation_input_tokens?: number;
     }
   | null;
+
+function extractCommand(input: Record<string, unknown> | undefined): string {
+  if (!input) return "";
+  const value =
+    input.command ?? input.cmd ?? input.shell_command ?? input.shellCommand ?? "";
+  return typeof value === "string" ? value : "";
+}
 
 const EMPTY_USAGE_TOTALS: ChatUsageTotals = {
   inputTokens: 0,
@@ -170,6 +179,17 @@ class ChatEventStateProjector {
           isError: event.isError,
           status: "done",
         });
+      case "permission_request": {
+        const decision = event.data?.decision ?? event.decision;
+        if (decision === "allow" || decision === "deny") {
+          return this.updateApproval(blocks, event.id, {
+            status: decision === "allow" ? "allowed" : "denied",
+            decidedBy:
+              (event.data?.decidedBy as string | undefined) ?? event.decidedBy,
+          });
+        }
+        return this.appendApproval(blocks, event);
+      }
       case "complete":
         return this.endTrailingAssistant(blocks);
       case "error": {
@@ -210,6 +230,46 @@ class ChatEventStateProjector {
       isComplete: false,
     };
     return { blocks: [...blocks, assistant], assistant };
+  }
+
+  private appendApproval(blocks: ChatMessageBlock[], event: ApprovalEvent): ChatMessageBlock[] {
+    const command = extractCommand(event.input);
+    if (!command) return blocks;
+    const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);
+    assistant.parts.push({
+      kind: "approval",
+      approvalId: event.id,
+      toolName: event.toolName || "Bash",
+      command,
+      reason:
+        (event.data?.reason as string | undefined) ??
+        (typeof event.reason === "string" ? event.reason : undefined),
+      status: "pending",
+    });
+    return next;
+  }
+
+  private updateApproval(
+    blocks: ChatMessageBlock[],
+    approvalId: string,
+    patch: Partial<Extract<AssistantMessagePart, { kind: "approval" }>>
+  ): ChatMessageBlock[] {
+    for (let index = blocks.length - 1; index >= 0; index--) {
+      const block = blocks[index];
+      if (!block || block.type !== "assistant") continue;
+      const partIndex = block.parts.findIndex(
+        (part) => part.kind === "approval" && part.approvalId === approvalId
+      );
+      if (partIndex < 0) continue;
+      const next = blocks.slice();
+      const parts = block.parts.slice();
+      const part = parts[partIndex];
+      if (part.kind !== "approval") continue;
+      parts[partIndex] = { ...part, ...patch };
+      next[index] = { ...block, parts };
+      return next;
+    }
+    return blocks;
   }
 
   private updateTrailingTool(

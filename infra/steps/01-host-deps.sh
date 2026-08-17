@@ -32,7 +32,7 @@ fi
 # shellcheck source=/dev/null
 . "$VERSIONS_FILE"
 for v in NODE_MAJOR NODE_MIN_VERSION GO_VERSION \
-         CLAUDE_CODE_VERSION CODEX_CLI_VERSION KIMI_CODE_VERSION; do
+         CLAUDE_CODE_VERSION CODEX_CLI_VERSION KIMI_CODE_VERSION OPENCODE_VERSION; do
     if [ -z "${!v:-}" ]; then
         err "version manifest is missing $v: $VERSIONS_FILE"
         exit 1
@@ -125,6 +125,7 @@ ensure_agent_cli() {
 ensure_agent_cli "Claude Code" claude @anthropic-ai/claude-code "$CLAUDE_CODE_VERSION"
 ensure_agent_cli "Codex" codex @openai/codex "$CODEX_CLI_VERSION"
 ensure_agent_cli "Kimi Code" kimi @moonshot-ai/kimi-code "$KIMI_CODE_VERSION"
+ensure_agent_cli "OpenCode" opencode opencode-ai "$OPENCODE_VERSION"
 
 # ───────────────── LXD (one container per project) ─────────────────
 if ! command -v lxc >/dev/null; then

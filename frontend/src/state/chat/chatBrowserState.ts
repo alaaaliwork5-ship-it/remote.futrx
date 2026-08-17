@@ -54,7 +54,8 @@ class ChatBrowserState {
     if (block.type === "error") return [block.message];
     return block.parts.flatMap((part) => {
       if (part.kind === "text" || part.kind === "thinking") return [part.text];
-      return part.output ? [part.output] : [];
+      if (part.kind === "tool") return part.output ? [part.output] : [];
+      return [];
     });
   }
 }
